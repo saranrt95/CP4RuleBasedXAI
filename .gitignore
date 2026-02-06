@@ -3,5 +3,3 @@ __pycache__/
 *.py[cod]
 results/
 toy_examples/
-info_openML_dataset.xlsx
-generate_data_openML.ipynb
