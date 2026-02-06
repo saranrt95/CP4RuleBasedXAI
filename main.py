@@ -48,18 +48,6 @@ USE_SIM = sys.argv[3].lower() == "true"
 
 print("DATASET: ", datasetname)
 
-# synthetic dataset settings
-if config['experiment_type']=='synthetic':
-    n_clusters_per_class = config["synthetic_dataset"]["n_clusters_per_class"]
-    N_points = config["synthetic_dataset"]["n_points"]
-    n_features = config['synthetic_dataset']['n_features']
-    outputlabel = config['synthetic_dataset']['outputlabel']
-    cls0label = config['synthetic_dataset']['cls0label']
-    cls1label = config['synthetic_dataset']['cls1label']
-    # Scenario-specific parameters
-    scenario_cfg = config["synthetic_dataset"]["scenarios"][datasetname]
-    centers = scenario_cfg["centers"]
-    sigmas = scenario_cfg["sigmas"]
 
 # CP settings
 epsilonrange = config["cp"]["epsilon_range"]
@@ -78,11 +66,21 @@ if save_plots_flag:
     plots_dir = os.path.join(res_path, "plots")
     os.makedirs(plots_dir, exist_ok=True)
 
-outfile = os.path.join(res_path, "synthetic_dataset.xlsx")
+
 
 rulesetfile = config['model']["ruleset_file"]
 rulesim_path = ""
 
+# synthetic dataset settings
+if config['experiment_type']=='synthetic':
+    n_clusters_per_class = config["synthetic_dataset"]["n_clusters_per_class"]
+    N_points = config["synthetic_dataset"]["n_points"]
+    n_features = config['synthetic_dataset']['n_features']
+    # Scenario-specific parameters
+    scenario_cfg = config["synthetic_dataset"]["scenarios"][datasetname]
+    centers = scenario_cfg["centers"]
+    sigmas = scenario_cfg["sigmas"]
+    outfile = os.path.join(res_path, "synthetic_dataset.xlsx")
 
 
 with open(f"{res_path}/metrics.csv","w") as ff:
@@ -92,10 +90,14 @@ with open(f"{res_path}/metrics.csv","w") as ff:
 
 # generate synthetic Gaussian data according to the scenario
 if config['experiment_type']=='synthetic':
-    if config['generate_data']:
+
+    if config['synthetic_data']['generate_data']:
+        outputlabel = config['synthetic_dataset']['outputlabel']
+        cls0label = config['synthetic_dataset']['cls0label']
+        cls1label = config['synthetic_dataset']['cls1label']
         X, Y = make_blobs(n_samples=N_points, centers=centers, n_features = n_features, cluster_std=sigmas, shuffle=False, random_state=42)
-        # create binary classes, assuming the first two clusters are for class 1, otherwise for class 0
-        Y = np.where(np.isin(Y, list(range(n_clusters_per_class))), 1, 0)
+        # create binary classes, assuming the first half clusters are for class 1, otherwise for class 0
+        Y = np.where(np.isin(Y, list(range(n_clusters_per_class))), cls1label, cls0label)
         plot_classes(X, Y, save_plots_flag=save_plots_flag, res_path=res_path)
         data_combined = np.hstack([X, Y.reshape(-1, 1)])
         df = pd.DataFrame(data_combined, columns=[f"X{i+1}" for i in range(n_features)]+[outputlabel])
@@ -103,19 +105,20 @@ if config['experiment_type']=='synthetic':
             df.to_excel(outfile, index=False)
     else:
         df = pd.read_excel(outfile)
+
     data_tr, data_cal, data_ts = split_data(df)
     featurelabels = list(data_tr.columns)[:-1]
-
+    outputlabel = list(data_tr.columns)[-1]
+    cls0label, cls1label = list(set(data_tr[outputlabel]))
+# benchmark real datasets
 elif config['experiment_type']=='benchmark':
-    outputlabel = config['dataset'][datasetname]['outputlabel']
-    cls0label = config['dataset'][datasetname]['cls0label']
-    cls1label = config['dataset'][datasetname]['cls1label']
     data_tr = pd.read_excel(f"{config["dataset"]["data_path"]}/{datasetname}/proper.xlsx")
     data_cal = pd.read_excel(f"{config["dataset"]["data_path"]}/{datasetname}/calibration.xlsx")
     data_ts = pd.read_excel(f"{config["dataset"]["data_path"]}/{datasetname}/test.xlsx")
     featurelabels = list(data_tr.columns)[:-1]
     n_features = len(featurelabels)
-    print("n features: ", n_features)
+    outputlabel = list(data_tr.columns)[-1]
+    cls0label, cls1label = list(set(data_tr[outputlabel]))
 
 
 # re-arrange to numpy and separate X and Y
@@ -170,7 +173,7 @@ if n_features == 2:
     plot_score(Xts, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "confiderai+", res_path = res_path)
 
 
-avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "confiderai+", APPROX = False)
+avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "confiderai+")
 
 
 plot_metrics(epsilonrange, avgErr, avgSize, "confiderai+", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
@@ -191,7 +194,7 @@ if n_features == 2:
     plot_score(Xts, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "risk_averse_confiderai", res_path = res_path)
 
 
-avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "risk_averse_confiderai", APPROX = False)
+avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "risk_averse_confiderai")
 
 
 plot_metrics(epsilonrange, avgErr, avgSize, "risk_averse_confiderai", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
@@ -214,7 +217,7 @@ selectedscores_cal = np.where(Ycal == cls0label, scores0_margin, scores1_margin)
 if n_features == 2:
     plot_score(Xts, scores0ts_margin, scores1ts_margin, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "margin", res_path = res_path)
 
-avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, scores0_margin, scores1_margin, n_c, epsilonrange, Yts, scores0ts_margin, scores1ts_margin, res_path, "margin", APPROX = False)
+avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, scores0_margin, scores1_margin, n_c, epsilonrange, Yts, scores0ts_margin, scores1ts_margin, res_path, "margin")
     
 
 
@@ -235,7 +238,7 @@ selectedscores_cal = np.where(Ycal == cls0label, scores0_lac, scores1_lac)
 if n_features == 2:
     plot_score(Xts, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "lac", res_path = res_path)
 
-avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, scores0_lac, scores1_lac, n_c, epsilonrange, Yts, scores0ts_lac, scores1ts_lac, res_path, "lac", APPROX = False)
+avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, scores0_lac, scores1_lac, n_c, epsilonrange, Yts, scores0ts_lac, scores1ts_lac, res_path, "lac")
     
 
 plot_metrics(epsilonrange, avgErr, avgSize, "lac", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
@@ -254,7 +257,7 @@ selectedscores_cal = np.where(Ycal == cls0label, scores0_cal_knn, scores1_cal_kn
 if n_features == 2:
     plot_score(Xts, scores0_test_knn, scores1_test_knn, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "knn", res_path = res_path)
 
-avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, scores0_cal_knn, scores1_cal_knn, n_c, epsilonrange, Yts, scores0_test_knn, scores1_test_knn, res_path, "knn", APPROX = False)
+avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, scores0_cal_knn, scores1_cal_knn, n_c, epsilonrange, Yts, scores0_test_knn, scores1_test_knn, res_path, "knn")
 
 
 

@@ -1,6 +1,4 @@
 experiment_type: benchmark
-generate_data: false
-
 
 cp:
   epsilon_range: [0.01, 0.05, 0.1, 0.2, 0.3]
@@ -18,6 +16,7 @@ output:
 
 
 synthetic_dataset:
+  generate_data: false
   n_clusters_per_class: 2
   n_features: 2
   n_points: 10000
@@ -65,134 +64,7 @@ synthetic_dataset:
         - [-0.8, 1.0]
         - [0.5, -1.1]
       sigmas: [1.2, 1.0, 1.3, 1.1]
+
 dataset:
-  data_path: data/ # da mettere
-  p2p:
-    outputlabel: g
-    featurelabels: ["mA","mQ","mDt","vA","vQ","vDt","sA","sQ","sDt","kA","kQ","kDt"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  ssh:
-    outputlabel: g
-    featurelabels: ["mA","mQ","mDt","vA","vQ","vDt","sA","sQ","sDt","kA","kQ","kDt"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  smoking:
-    outputlabel: smoking
-    featurelabels: ["age","height_cm","weight_kg","waist_cm","eyesightLeft",
-                "eyesightRight","systolic","relaxation","fastingBloodSugar",
-                "Cholesterol","triglyceride","HDL","LDL","hemoglobin",
-                "UrineProtein","serumCreatinine","AST","ALT","Gtp"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  cardio:
-    outputlabel: cardio
-    featurelabels: ["age","height","weight","ap_hi","ap_lo","cholesterol","gluc"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  telescope:
-    outputlabel: class
-    featurelabels: ["fLength","fWidth","fSize","fConc","fConc1","fAsym",
-                "fM3Long","fM3Trans","fAlpha","fDist"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  platooning:
-    outputlabel: collision
-    featurelabels: ["N","F0","PER","d0","v0"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  mqttset:
-    outputlabel: output
-    featurelabels: ["tcp.time_delta","tcp.len","mqtt.conack.val","mqtt.conflag.cleansess",
-                "mqtt.conflag.passwd","mqtt.conflag.uname","mqtt.dupflag","mqtt.kalive",
-                "mqtt.len","mqtt.msgid","mqtt.msgtype","mqtt.proto_len","mqtt.qos",
-                "mqtt.retain","mqtt.ver"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  rul:
-    outputlabel: RUL_binary
-    featurelabels: ["s_os2","m_Nc","v_Nc","v_phi","m_htBleed","s_htBleed","m_W31"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  eeg:
-    outputlabel: eyeDetection
-    featurelabels: ["AF3","F7","F3","FC5","T7","P7","O1","O2","P8","T8","FC6","F4","F8","AF4"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  fire:
-    outputlabel: FireAlarm
-    featurelabels: ["Temperature","Humidity","TVOC","eCO2",
-                "Raw H2","Raw Ethanol","Pressure","PM1.0","PM2.5",
-                "NC0.5","NC1.0","NC2.5","CNT"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  breastW:
-    outputlabel: Diagnosis
-    featurelabels: ['radius1', 'texture1', 'perimeter1', 'area1', 'smoothness1',
-       'compactness1', 'concavity1', 'concave_points1', 'symmetry1',
-       'fractal_dimension1', 'radius2', 'texture2', 'perimeter2', 'area2',
-       'smoothness2', 'compactness2', 'concavity2', 'concave_points2',
-       'symmetry2', 'fractal_dimension2', 'radius3', 'texture3', 'perimeter3',
-       'area3', 'smoothness3', 'compactness3', 'concavity3', 'concave_points3',
-       'symmetry3', 'fractal_dimension3']
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: true
-
-  diabetes:
-    outputlabel: class
-    featurelabels: ["preg","plas","pres","skin","insu","mass","pedi","age"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: true
-
-  spambase:
-    outputlabel: class
-    featurelabels: ['word_freq_make', 'word_freq_address', 'word_freq_all', 'word_freq_3d',
-                'word_freq_our', 'word_freq_over', 'word_freq_remove',
-                'word_freq_internet', 'word_freq_order', 'word_freq_mail',
-                'word_freq_receive', 'word_freq_will', 'word_freq_people',
-                'word_freq_report', 'word_freq_addresses', 'word_freq_free',
-                'word_freq_business', 'word_freq_email', 'word_freq_you',
-                'word_freq_credit', 'word_freq_your', 'word_freq_font', 'word_freq_000',
-                'word_freq_money', 'word_freq_hp', 'word_freq_hpl', 'word_freq_george',
-                'word_freq_650', 'word_freq_lab', 'word_freq_labs', 'word_freq_telnet',
-                'word_freq_857', 'word_freq_data', 'word_freq_415', 'word_freq_85',
-                'word_freq_technology', 'word_freq_1999', 'word_freq_parts',
-                'word_freq_pm', 'word_freq_direct', 'word_freq_cs', 'word_freq_meeting',
-                'word_freq_original', 'word_freq_project', 'word_freq_re',
-                'word_freq_edu', 'word_freq_table', 'word_freq_conference',
-                'char_freq_3B', 'char_freq_28', 'char_freq_5B', 'char_freq_21',
-                'char_freq_24', 'char_freq_23', 'capital_run_length_average',
-                'capital_run_length_longest', 'capital_run_length_total']
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: false
-
-  liver:
-    outputlabel: Selector
-    featurelabels: ["Age","TB","DB","Alkphos","Sgpt","Sgot","TP","ALB","AG_Ratio"]
-    cls0label: 0
-    cls1label: 1
-    APPROX_QUANTILE: true
+  data_path: data/ 
 

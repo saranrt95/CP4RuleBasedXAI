@@ -14,5 +14,6 @@ def split_data(df):
 
     #y_train=data_tr["output"]
     #data_tr.drop(["output"],axis=1,inplace=True)
+    
 
     return data_tr, data_cal, data_ts

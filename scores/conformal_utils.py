@@ -5,16 +5,13 @@ from sklearn.neighbors import NearestNeighbors
 from rule_generation_utils import *
 
 
-def GetPredictionRegions(y_calib, scores0, scores1, scores0ts, scores1ts, epsilon, n_c, APPROX = False):
+def GetPredictionRegions(y_calib, scores0, scores1, scores0ts, scores1ts, epsilon, n_c):
 
     scores_calib = np.where(y_calib == 0, scores0, scores1)
 
     scores_calib_sorted = np.sort(scores_calib)
 
-    if APPROX:
-        qlevel = 1- epsilon
-    else:
-        qlevel = np.ceil((n_c + 1) * (1 - epsilon)) / n_c
+    qlevel = np.ceil((n_c + 1) * (1 - epsilon)) / n_c
     s_epsilon = np.quantile(scores_calib_sorted, qlevel)
 
     n_test = scores0ts.shape[0]
@@ -43,7 +40,7 @@ def GetPredictionRegions(y_calib, scores0, scores1, scores0ts, scores1ts, epsilo
 
 
 
-def evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, score_fn, APPROX = False):
+def evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, score_fn):
     n_eps = len(epsilonrange)
     avgErr = np.zeros(n_eps)
     avgErr_singleton = np.zeros(n_eps)
@@ -55,7 +52,7 @@ def evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, t
     avgSize = np.zeros(n_eps)
     for i, epsilon in enumerate(epsilonrange):
         # Compute prediction regions
-        C_all, _, _, C_size = GetPredictionRegions(Ycal, tau0cal, tau1cal, tau0ts, tau1ts, epsilon, n_c, APPROX=APPROX)
+        C_all, _, _, C_size = GetPredictionRegions(Ycal, tau0cal, tau1cal, tau0ts, tau1ts, epsilon, n_c)
         
         n_err = np.sum((Yts != C_all) & (C_all != 2))
         n_err_singleton = np.sum((Yts!=C_all) & (C_size == 1))
