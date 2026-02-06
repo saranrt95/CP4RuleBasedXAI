@@ -1,114 +1,81 @@
 import numpy as np
 import pandas as pd
-from math import ceil
-from collections import defaultdict
-
-#from rulesetparsing import *
-from config import *
-
-def GeometricRuleSimilarity(parsedruleset, AREA = True):
-	'''
-	parsedruleset.Feature = parsedruleset.Feature.astype("category")
-	parsedruleset.Feature = parsedruleset.Feature.cat.set_categories(features)
-	parsedruleset = parsedruleset.sort_values(["Rule ID", "Feature"])
-	'''
-	overlaps_all = []
-	for n, rule in enumerate(list(set(list(parsedruleset["Rule ID"])))):
-		# lower thresholds of the rule
-		lower_rule = parsedruleset[parsedruleset["Rule ID"] == rule]["Lower"].values
-		# upper thresholds
-		upper_rule = parsedruleset[parsedruleset["Rule ID"] == rule]["Upper"].values
-
-		updated_list = list(set(list(parsedruleset["Rule ID"])))
-		overlaps_rule = []
-		
-		# iterate over the same set of rules 
-		for i,rule_p in enumerate(updated_list):
-			if rule == rule_p: 
-				IoU = 1
-				overlaps_rule.append(IoU)
-				continue
-			# lower thresholds
-			lower_rule_p = parsedruleset[parsedruleset["Rule ID"] == rule_p]["Lower"].values
-			# upper thresholds
-			upper_rule_p = parsedruleset[parsedruleset["Rule ID"] == rule_p]["Upper"].values
-			# concatenate the lowers
-			l = np.column_stack((lower_rule,lower_rule_p))
-
-			# maximum of the lower rule thresholds, for each feature
-			MaxOfLowers = np.max(l, axis = 1)
-			# concatenate the uppers
-			u = np.column_stack((upper_rule,upper_rule_p))
-
-			# minimum of upper rule thresholds, for each feature
-			MinOfUppers = np.min(u, axis = 1)
+import os
 
 
-			# all rule conditions are at least adjacent or overlapped --> geometrical similarity
+def GeneralizedIoU(parsedruleset, rulesetfile=None, SAVE_RS_VALUES=False, save_path=None, mode = "local"):
+    """
+    Adapting the concept of generalized IoU to rule similarity
+    """
 
-			if np.prod(MaxOfLowers <= MinOfUppers) == 1:
-				# vector of the domains defined by rule conditions; each row is a rule and each column is a feature
-				domains = u.T-l.T
+    rule_ids = sorted(parsedruleset["Rule ID"].unique())
+    #print(rule_ids)
+    n_rules = len(rule_ids)
+    N = len(parsedruleset[parsedruleset["Rule ID"]==rule_ids[0]]["Lower"].values)
+    #print(f"total number of features D = {N}")
 
-				domains[np.where(domains==0)] = 1 
+    lowers = [parsedruleset.loc[parsedruleset["Rule ID"]==r, "Lower"].values for r in rule_ids]
+    uppers = [parsedruleset.loc[parsedruleset["Rule ID"]==r, "Upper"].values for r in rule_ids]
 
-				if AREA:
-					# area of the rules
-					areas = np.prod(domains, axis = 1)
-					# width of the domains defined by the conditions
-					overlap_domains = MinOfUppers - MaxOfLowers
+    
+    #domain_diag = np.linalg.norm(global_max - global_min)
+    #domain_diag = max(domain_diag, 1e-12)  # avoid div by zero
 
-					if np.shape(overlap_domains[overlap_domains!=0])[0] >= 2:
-						# the overlap defines an area
-						non_zero_overlaps = overlap_domains[overlap_domains!=0]
-						area_overlap = np.prod(overlap_domains)
+    sim_matrix = np.zeros((n_rules, n_rules), dtype=float)
 
-						IoU = area_overlap/(np.sum(areas, axis = 0) - area_overlap)
-					else:
-						perimeters = np.sum(2*domains, axis = 1)
-						# the overlap is over a segment
-						area_overlap = np.sum(overlap_domains)
-						# ratio between overlap and total perimeters
-						IoU = area_overlap/(np.sum(perimeters, axis = 0) - area_overlap)
+    for i, (L1, U1) in enumerate(zip(lowers, uppers)):
+        for j, (L2, U2) in enumerate(zip(lowers[i:], uppers[i:]), start=i):
+            #print(f"rule {i+1}-rule{j+1}")
+            if i == j:
+                sim_matrix[i,j] = 1.0
+                continue
+            #print(L1, U1, L2, U2)
+            MaxL = np.maximum(L1, L2)		
+            MinU = np.minimum(U1, U2)
+            overlap = np.maximum(0.0, MinU - MaxL)
+            #print(f"per-dimension overlaps: {overlap}")
+            #n_pos = np.sum(overlap > 0)
+            #print(f"n_d = {n_pos}")
+            #gap = np.maximum(0.0, np.maximum(L2 - U1, L1 - U2))
+            #print(f"per-dimension gap: {gap}")
+            vol_overlap = np.prod(overlap)
+            #print("volume overlap: ", vol_overlap)
+            vol1 = np.prod(U1 - L1)
+            vol2 = np.prod(U2 - L2)
+            volume_union = vol1 + vol2 - vol_overlap
+            #print("volume union: ", volume_union)
+            IoU = vol_overlap / volume_union if volume_union > 0 else 0.0
+            #print("IoU: ", IoU)
 
-				else:
+            if mode == "global":
+                # compute global spans 
+                global_min = np.min(np.vstack(lowers), axis=0)
+                global_max = np.max(np.vstack(uppers), axis=0)
+                
+                volume_global = np.prod(global_max-global_min)
+                #print("total volume global: ", volume_global)
+            if mode == "local":
+                minL = np.minimum(L1, L2)
+                maxU = np.maximum(U1,U2)
+                volume_global = np.prod(maxU-minL)
+                #print("total volume local: ", volume_global)
 
-					# perimeters of the rules
-					perimeters = np.sum(2*domains, axis = 1)
-					# widths of the domains defined by the conditions
-					overlap_domains = MinOfUppers - MaxOfLowers
+            volume_gap = volume_global-volume_union
+            #print("volume gap: ", volume_gap)
+            # range  [-1,1]
+            GIoU = IoU - volume_gap/volume_global
+            #print("GIoU [-1,1]: ", GIoU)
 
-					if np.shape(overlap_domains[overlap_domains!=0])[0] >= 2:
-						# the overlap defines an area
-						perimeter_overlap = 2*np.sum(overlap_domains)
-					else:
-						# the overlap is over a segment
-						perimeter_overlap = np.sum(overlap_domains)
-					
-					# ratio between overlap and total perimeters
-					IoU = perimeter_overlap/(np.sum(perimeters, axis = 0) - perimeter_overlap + 10**-40)
+            # map from [-1,1] to [0,1]
+            sim_matrix[i,j] = sim_matrix[j,i] = (GIoU+1)/2
+            #print("GIoU Similarity [0,1]: ", (GIoU+1)/2)
 
+    # optionally save similarity matrix
+    if SAVE_RS_VALUES and rulesetfile and save_path:
+        rr = pd.read_csv(rulesetfile, names=["Rule", "Covering", "Error"])
+        df = pd.DataFrame(sim_matrix, index=rule_ids, columns=rule_ids)
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
+        df.to_excel(f"{save_path}rulesimilarity.xlsx")
 
-				#print("rule {} and rule {} have an overlap of {}".format(rule, rule_p,IoU))
-				overlaps_rule.append(IoU)
-							
-			else:
-				#print("rule {} and rule {} are not overlapped".format(rule, rule_p))
-				overlaps_rule.append(np.nan)
+    return sim_matrix
 
-		overlaps_all.append(overlaps_rule)
-
-	matrix =np.array(overlaps_all)
-	matrix[matrix == 0] = np.nan
-
-	if SAVE_RS_VALUES:
-		if not exists(RS_PATH):
-			os.mkdir(RS_PATH) 
-		rr = pd.read_csv(rulesetfile, names = ["Rule","Covering","Error"])
-		overlapMatrix = pd.DataFrame(matrix)
-		overlapMatrix.index = list(rr["Rule"].values)
-		overlapMatrix.columns = list(rr["Rule"].values)
-
-		overlapMatrix.to_excel(RS_PATH+dataset+"_rulesimilarity.xlsx")
-
-	return matrix
