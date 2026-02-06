@@ -1,6 +1,6 @@
 ## CONFIDERAI+: CONFIDERAI extension to mutually exclusive rules
 
-This code allows to perform conformal prediction for rule-based binary classifiers. It extends our previous score function, CONFIDERAI (paper [1], link ad altra repo), to also include non-overlapping, mutually exclusive, rules, thus being applicable for Decision-Tree-like classifiers.
+This code allows to perform conformal prediction for rule-based binary classifiers. It extends our previous score function, CONFIDERAI [1], to also include non-overlapping, mutually exclusive, rules, thus being applicable for Decision-Tree-like classifiers.
 
 # How to use
 
@@ -13,4 +13,7 @@ The usage of this code on custom data is very simple and intuitive.
     - `relevance`: boolean to express whether to use relevance term in CONFIDERAI+/Risk Averse CONFIDERAI scores
     - `similarity`: whether to use rule similarity term in CONFIDERAI+/Risk Averse CONFIDERAI scores or not.
 
+# References
+
+[1] Narteni, S., Carlevaro, A., Dabbene, F., Muselli, M., & Mongelli, M. (2025). A novel score function for conformal prediction in rule-based binary classification. Pattern Recognition, 112219.
  
