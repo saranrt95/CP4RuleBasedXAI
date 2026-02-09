@@ -16,4 +16,5 @@ The usage of this code on custom data is very simple and intuitive.
 # References
 
 [1] Narteni, S., Carlevaro, A., Dabbene, F., Muselli, M., & Mongelli, M. (2025). A novel score function for conformal prediction in rule-based binary classification. Pattern Recognition, 112219.
+
  

@@ -1,11 +1,5 @@
 import numpy as np
-import pandas as pd
-import os
-from os.path import exists
-import re
-import time
-from sklearn.neighbors import NearestNeighbors
-#### CONFIDERAI SCORE ######
+
 
 def confiderai_score(X_r, S_row, rulesim, rule_limits, changeclsidx, y, relevance):
     verified = np.where(S_row == 1)[0]
