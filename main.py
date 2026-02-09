@@ -148,7 +148,7 @@ wrong_1_ts = Xts[(Yts == cls0label) & (y_pred_ts == cls1label)]
 
 # extract rules from DT and compute rule relevances
 
-rule_limits, changeclsidx, nrules, relevance = extract_and_save_rules(model, res_path, rulesetfile, data_tr, output=outputlabel, save = config['model']['train_model'])
+rule_limits, changeclsidx, nrules, relevance = extract_and_save_rules(model, res_path, rulesetfile, data_tr, covering_threshold = 0.0, output=outputlabel, save = config['model']['train_model'])
 
 
 # parse the ruleset to extract each condition and fill each rule with missing thresholds

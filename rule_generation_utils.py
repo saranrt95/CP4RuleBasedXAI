@@ -85,7 +85,7 @@ def generate_data(N_points, p_A, p_O, mu1, mu2, sigma1, sigma2, random_state=Non
 
 # this function extracts the rules from a Decision Tree model and writes them as IF-THEN sentences
 
-def ExtractRulesFromDT(tree, feature_names, class_names, target_label):
+def ExtractRulesFromDT(data_features, y_train, tree, feature_names, class_names, target_label, covering_threshold = 0.0):
     tree_ = tree.tree_
 
     feature_name = [
@@ -128,14 +128,20 @@ def ExtractRulesFromDT(tree, feature_names, class_names, target_label):
     rules = []
     changeclsidx = None
     second_class_idx = 1 if len(class_names) > 1 else None
-
+    count = 0
     for i, leaf in enumerate(leaves_info, start=1):
-        rule = f"RULE {i}: IF " + " AND ".join(leaf["path"])
+        rule = f"IF " + " AND ".join(leaf["path"])
         rule += f" THEN {target_label} in {leaf['class_label']}"
-        rules.append(rule)
-
-        if changeclsidx is None and leaf["class_idx"] == second_class_idx:
-            changeclsidx = i
+        covering, error = computeRuleMetrics(rule,data_features,y_train)
+        rule+=f", COVERING: {covering}, ERROR: {error}"
+        if covering >= covering_threshold:
+            count+=1
+            rule = f"RULE {count}: IF " + " AND ".join(leaf["path"])
+            rule += f" THEN {target_label} in {leaf['class_label']}"
+            rule+=f", COVERING: {covering}, ERROR: {error}"
+            rules.append(rule)
+            if changeclsidx is None and leaf["class_idx"] == second_class_idx:
+                changeclsidx = count
 
     return rules, changeclsidx
 
@@ -213,53 +219,53 @@ def extract_rule_thresholds_from_df(file_path, df):
 def extract_rule_thresholds_from_df_multid(file_path, df):
     """
     Extract thresholds for each rule in the format:
-    [l1,u1,l2,u2,...,ld,ud]
+    [l1, u1, l2, u2, ..., ld, ud]
 
-    Returns
-    -------
-    rule_thresholds : list of lists
-    feature_order   : list of feature names
+    Feature order follows df.columns.
     """
 
     condition_pattern = re.compile(
-        r'(X\d+)\s*(<=|>=|<|>)\s*([-+]?\d*\.?\d+)'
+        r'([A-Za-z_][A-Za-z0-9_]*)\s*(<=|>=|<|>)\s*([-+]?\d*\.?\d+)'
     )
 
-    # Feature order inferred from dataframe
     feature_order = list(df.columns)
 
-    # Dataset-wide bounds
     data_min = df.min().to_dict()
     data_max = df.max().to_dict()
 
     rule_thresholds = []
 
-    with open(file_path, 'r') as f:
+    with open(file_path, "r") as f:
         for line in f:
             line = line.strip()
             if not line.startswith("RULE"):
                 continue
 
-            # initialize bounds
-            lower = {feat: data_min[feat] for feat in feature_order}
-            upper = {feat: data_max[feat] for feat in feature_order}
+            # initialize bounds to data min/max
+            lower = {f: data_min[f] for f in feature_order}
+            upper = {f: data_max[f] for f in feature_order}
 
             matches = condition_pattern.findall(line)
 
-            for var, op, value in matches:
+            for feat, op, value in matches:
+                if feat not in lower:
+                    # feature not in dataframe → ignore safely
+                    continue
+
                 value = float(value)
 
-                if op in ('>', '>='):
-                    lower[var] = max(lower[var], value)
-                elif op in ('<', '<='):
-                    upper[var] = min(upper[var], value)
+                if op in (">", ">="):
+                    lower[feat] = max(lower[feat], value)
+                elif op in ("<", "<="):
+                    upper[feat] = min(upper[feat], value)
 
-            # flatten in consistent order
-            rule_limits = []
+            # flatten
+            rule_vec = []
             for feat in feature_order:
-                rule_limits.extend([lower[feat], upper[feat]])
+                rule_vec.extend([lower[feat], upper[feat]])
 
-            rule_thresholds.append(rule_limits)
+            rule_thresholds.append(rule_vec)
+
     return rule_thresholds, feature_order
 
 def ComputeRelevances(rulesetfile):

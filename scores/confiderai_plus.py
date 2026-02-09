@@ -121,17 +121,12 @@ def confiderai_plus_score(X_r, rulesim, rule_limits, changeclsidx, y, relevance,
     sim_term_tot = []#1
 
     for r in idxrules:#idxrules:
-        #print("r = ", r+1)
         gamma = compute_centerbased_gamma_multid(rule_limits[r], X_r)#compute_borderbased_gamma(rule_limits[r], X_r[0], X_r[1])#compute_centerbased_gamma(rule_limits[r], X_r[0], X_r[1])
-
         gamma_all_rules.append(gamma)
 
         # apply relevance
         if use_relevance:
             gamma *= (1 - relevance[r])
-        
-        # for testing with only distance-related term
-        #tau = tau_geom
 
         #tauprod *= tau
         score_all_rules.append(gamma)

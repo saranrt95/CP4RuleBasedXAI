@@ -77,14 +77,31 @@ def KNN_Score(X, Y, ruleset_path, featurelabels, outputlabel, cls0label, cls1lab
     knnscores0_cal = []
     knnscores1_cal = []
 
+    n_cal = len(X_cal)
+
+    scores0_cal_knn = np.full(n_cal, np.nan)
+    scores1_cal_knn = np.full(n_cal, np.nan)
+
     for r in range(len(Xcal_rules)):
         knnscores0_cal.append(compute_knn_score_rulewise(Xcal_rules[r], X_cal, Y_cal, cls0label, K = K))
         knnscores1_cal.append(compute_knn_score_rulewise(Xcal_rules[r], X_cal, Y_cal, cls1label, K = K))
 
-    cal_idx_all = np.hstack(cal_idx)
+    for r in range(len(cal_idx)):
+        idx = cal_idx[r]
+        scores0_cal_knn[idx] = knnscores0_cal[r]
+        scores1_cal_knn[idx] = knnscores1_cal[r]
+    max0 = np.nanmax(scores0_cal_knn)
+    max1 = np.nanmax(scores1_cal_knn)
+
+    unverified = np.isnan(scores0_cal_knn)
+
+    scores0_cal_knn[unverified] = max0
+    scores1_cal_knn[unverified] = max1
+
+    #cal_idx_all = np.hstack(cal_idx)
     #order = np.argsort(cal_idx_all)
-    scores0_cal_knn = np.hstack(knnscores0_cal)[cal_idx_all]
-    scores1_cal_knn = np.hstack(knnscores1_cal)[cal_idx_all]
+    #scores0_cal_knn = np.hstack(knnscores0_cal)[cal_idx_all]
+    #scores1_cal_knn = np.hstack(knnscores1_cal)[cal_idx_all]
 
     return scores0_cal_knn, scores1_cal_knn#, Xcal_rules, Ycal_rules, cal_idx, order 
 

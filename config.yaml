@@ -1,7 +1,7 @@
 experiment_type: benchmark
 
 cp:
-  epsilon_range: [0.01, 0.05, 0.1, 0.2, 0.3]
+  epsilon_range: [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
 
 model:
   train_model: true
@@ -11,7 +11,7 @@ model:
   ccp_alpha: 0
 
 output:
-  res_dir: results/results_20250206_benchmark
+  res_dir: results/results_20250209_benchmark
   save_plots: true
 
 
