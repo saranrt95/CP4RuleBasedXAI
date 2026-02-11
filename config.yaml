@@ -11,12 +11,12 @@ model:
   ccp_alpha: 0
 
 output:
-  res_dir: results/results_20250209_benchmark
+  res_dir: results/results_20250211_adversarial
   save_plots: true
 
 
 synthetic_dataset:
-  generate_data: false
+  generate_data: true
   n_clusters_per_class: 2
   n_features: 2
   n_points: 10000

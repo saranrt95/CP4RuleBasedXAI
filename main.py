@@ -19,7 +19,7 @@ from rulesetparsing import *
 from geometric_rule_similarity import *
 
 from scores.conformal_utils import *
-from scores.confiderai_plus import *
+from scores.risk_tolerant_confiderai import *
 from scores.risk_averse_confiderai import * 
 from scores.lac import *
 from scores.margin import *
@@ -91,7 +91,7 @@ with open(f"{res_path}/metrics.csv","w") as ff:
 # generate synthetic Gaussian data according to the scenario
 if config['experiment_type']=='synthetic':
 
-    if config['synthetic_data']['generate_data']:
+    if config['synthetic_dataset']['generate_data']:
         outputlabel = config['synthetic_dataset']['outputlabel']
         cls0label = config['synthetic_dataset']['cls0label']
         cls1label = config['synthetic_dataset']['cls1label']
@@ -158,9 +158,9 @@ parsedruleset.Feature = parsedruleset.Feature.cat.set_categories(featurelabels)
 parsedruleset = parsedruleset.sort_values(["Rule ID", "Feature"])
 rulesim = GeneralizedIoU(parsedruleset, rulesetfile=f"{res_path}/{rulesetfile}", SAVE_RS_VALUES=True, save_path=res_path+rulesim_path) 
 
-###### CONFIDERAI+ #########
+###### RT-CONFIDERAI #########
 
-print("CONFIDERAI+")
+print("RT-CONFIDERAI")
 
 tau0cal, gamma0cal,simterm0cal = compute_confiderai_score(Xcal, rulesim, rule_limits, changeclsidx, cls0label, relevance, use_relevance=USE_RELEV, use_sim=USE_SIM)
 tau1cal, gamma1cal,simterm1cal = compute_confiderai_score(Xcal, rulesim, rule_limits, changeclsidx, cls1label, relevance,use_relevance=USE_RELEV, use_sim=USE_SIM)
@@ -170,17 +170,17 @@ tau1ts,_,_ = compute_confiderai_score(Xts, rulesim, rule_limits, changeclsidx, c
 selectedscores_cal = np.where(Ycal == cls0label, tau0cal, tau1cal)
 
 if n_features == 2:
-    plot_score(Xts, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "confiderai+", res_path = res_path)
+    plot_score(Xts, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "RT-CONFIDERAI", res_path = res_path)
 
 
-avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "confiderai+")
+avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "RT-CONFIDERAI")
 
 
-plot_metrics(epsilonrange, avgErr, avgSize, "confiderai+", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+plot_metrics(epsilonrange, avgErr, avgSize, "RT-CONFIDERAI", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
-plot_calibration_scores_distribution(selectedscores_cal, "confiderai+", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+plot_calibration_scores_distribution(selectedscores_cal, "RT-CONFIDERAI", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 if n_features == 2:
-    plot_prediction_regions(Xts, Ycal, tau0cal, tau1cal, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "confiderai+", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+    plot_prediction_regions(Xts, Ycal, tau0cal, tau1cal, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "RT-CONFIDERAI", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 ### RISK-AVERSE CONFIDERAI ####
 print("RA-CONFIDERAI")
@@ -191,17 +191,17 @@ tau1ts,_,_,_ = compute_dataset_score(Xts, rulesim, rule_limits, changeclsidx, cl
 
 selectedscores_cal = np.where(Ycal == cls0label, tau0cal, tau1cal)
 if n_features == 2:
-    plot_score(Xts, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "risk_averse_confiderai", res_path = res_path)
+    plot_score(Xts, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "RA-CONFIDERAI", res_path = res_path)
 
 
-avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "risk_averse_confiderai")
+avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "RA-CONFIDERAI")
 
 
-plot_metrics(epsilonrange, avgErr, avgSize, "risk_averse_confiderai", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+plot_metrics(epsilonrange, avgErr, avgSize, "RA-CONFIDERAI", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
-plot_calibration_scores_distribution(selectedscores_cal, "risk_averse_confiderai", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+plot_calibration_scores_distribution(selectedscores_cal, "RA-CONFIDERAI", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 if n_features == 2:
-    plot_prediction_regions(Xts, Ycal, tau0cal, tau1cal, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "risk_averse_confiderai", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+    plot_prediction_regions(Xts, Ycal, tau0cal, tau1cal, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "RA-CONFIDERAI", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 
 
@@ -236,16 +236,16 @@ scores1ts_lac = LAC_score(model, Xts, cls1label)
 
 selectedscores_cal = np.where(Ycal == cls0label, scores0_lac, scores1_lac)
 if n_features == 2:
-    plot_score(Xts, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "lac", res_path = res_path)
+    plot_score(Xts, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "LAC", res_path = res_path)
 
-avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, scores0_lac, scores1_lac, n_c, epsilonrange, Yts, scores0ts_lac, scores1ts_lac, res_path, "lac")
+avgErr, avgErr_singleton, empty, singleton, double, avgSize = evaluate_conformal(Ycal, scores0_lac, scores1_lac, n_c, epsilonrange, Yts, scores0ts_lac, scores1ts_lac, res_path, "LAC")
     
 
-plot_metrics(epsilonrange, avgErr, avgSize, "lac", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+plot_metrics(epsilonrange, avgErr, avgSize, "LAC", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
-plot_calibration_scores_distribution(selectedscores_cal, "lac", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+plot_calibration_scores_distribution(selectedscores_cal, "LAC", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 if n_features == 2:
-    plot_prediction_regions(Xts, Ycal, scores0_lac, scores1_lac, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "lac", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+    plot_prediction_regions(Xts, Ycal, scores0_lac, scores1_lac, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "LAC", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 ######### KNN ###########
 print("KNN")

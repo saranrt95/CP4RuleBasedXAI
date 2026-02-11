@@ -3,30 +3,7 @@ import numpy as np
 
 from rule_generation_utils import *
 
-#### CONFIDERAI+ SCORE ######
-
-def compute_centerbased_gamma(rule_limits, X_r, Y_r, distance = "L1", normalization = "tanh"):
-
-    xmin, xmax, ymin, ymax = rule_limits#0.2, 0.7, 0.3, 0.7
-
-    cx, cy = (xmin+xmax)/2, (ymin + ymax)/2
-    hx = abs(xmax - xmin)/2
-    hy = abs(ymax - ymin)/2
-
-    gamma_x = np.abs(X_r - cx) / hx
-    gamma_y = np.abs(Y_r - cy) / hy
-    if distance == "L2":
-        tau_geom = np.sqrt((gamma_x**2 + gamma_y**2) / 2)#np.mean([gamma_x, gamma_y], axis=0) #np.zeros(X_r.shape)
-    elif distance == "L1":
-        tau_geom = np.mean([gamma_x, gamma_y], axis=0)
-    
-    if normalization == "bounded":
-        tau_geom = tau_geom/(1+tau_geom) # np.tanh(tau_geom)#
-    elif normalization == "tanh":
-        tau_geom = np.tanh(tau_geom)
-
-
-    return tau_geom
+#### RT-CONFIDERAI SCORE ######
 
 
 def compute_centerbased_gamma_multid(rule_limits, X_r, distance="L1", normalization="tanh"):
@@ -108,7 +85,7 @@ def compute_class_similarity_terms(rulesim, changeclsidx, y):
     return W_y, C_y
 
 
-def confiderai_plus_score(X_r, rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y, use_relevance = True, use_sim = True):
+def risk_tolerant_confiderai_score(X_r, rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y, use_relevance = True, use_sim = True):
 
     if y == 0:
         idxrules = range(changeclsidx-1)#verified[verified < changeclsidx-1]
@@ -162,7 +139,7 @@ def compute_confiderai_score(X, rulesim, rule_limits, changeclsidx, y, relevance
     gamma = np.empty(N_points)
     simterm = np.empty(N_points)
     for i in range(N_points):
-        tau[i], gamma[i], simterm[i] = confiderai_plus_score(X[i], rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y, use_relevance=use_relevance, use_sim = use_sim)
+        tau[i], gamma[i], simterm[i] = risk_tolerant_confiderai_score(X[i], rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y, use_relevance=use_relevance, use_sim = use_sim)
     
     return tau, gamma, simterm
 
