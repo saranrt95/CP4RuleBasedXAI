@@ -6,7 +6,7 @@ from rule_generation_utils import *
 #### RT-CONFIDERAI SCORE ######
 
 
-def compute_centerbased_gamma_multid(rule_limits, X_r, distance="L1", normalization="tanh"):
+def compute_centerbased_gamma_multid(rule_limits, X_r, distance="L1", normalization="tanh", p=1):
     """
     rule_limits: array-like of shape (2*d,) -> [l1,u1,l2,u2,...]
     X_r: array-like of shape (d,)
@@ -29,21 +29,27 @@ def compute_centerbased_gamma_multid(rule_limits, X_r, distance="L1", normalizat
     # avoid division by zero
     half_widths = np.clip(half_widths, 1e-12, None)
 
-    gamma_vec = np.abs(X_r - centers) / half_widths
+    gamma_vec = (np.abs(X_r - centers) / half_widths)**p
 
     if distance == "L2":
         tau_geom = np.sqrt(np.mean(gamma_vec ** 2))
     elif distance == "L1":
         tau_geom = np.mean(gamma_vec)
+    elif distance == "Linf":
+         tau_geom = np.max(gamma_vec, axis = 0)
     else:
-        raise ValueError("distance must be 'L1' or 'L2'")
+        raise ValueError("distance must be 'L1', 'L2' or 'Linf' ")
 
-    if normalization == "bounded":
-        tau_geom = tau_geom / (1.0 + tau_geom)
+    if normalization == "decay":
+        tau_geom = tau_geom/(1+np.abs(tau_geom))
     elif normalization == "tanh":
         tau_geom = np.tanh(tau_geom)
+    elif normalization == "sigmoid":
+        tau_geom = 2*(1/(1+np.exp(-tau_geom)) - 0.5)
+    elif normalization == "atan":
+        tau_geom = (2/np.pi) *  np.atan((np.pi/2)*tau_geom)
     else:
-        raise ValueError("normalization must be 'bounded' or 'tanh'")
+        raise ValueError("normalization function must be one of: 'decay','tanh', 'sigmoid', 'atan'")
 
     return tau_geom
 
@@ -85,7 +91,7 @@ def compute_class_similarity_terms(rulesim, changeclsidx, y):
     return W_y, C_y
 
 
-def risk_tolerant_confiderai_score(X_r, rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y, use_relevance = True, use_sim = True):
+def risk_tolerant_confiderai_score(X_r, rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y, distance = "L1", p=1, norm_function = "tanh", aggregation = "geometric_mean", beta = None, use_relevance = True, use_sim = True):
 
     if y == 0:
         idxrules = range(changeclsidx-1)#verified[verified < changeclsidx-1]
@@ -98,7 +104,7 @@ def risk_tolerant_confiderai_score(X_r, rulesim, rule_limits, changeclsidx, y, r
     sim_term_tot = []#1
 
     for r in idxrules:#idxrules:
-        gamma = compute_centerbased_gamma_multid(rule_limits[r], X_r)#compute_borderbased_gamma(rule_limits[r], X_r[0], X_r[1])#compute_centerbased_gamma(rule_limits[r], X_r[0], X_r[1])
+        gamma = compute_centerbased_gamma_multid(rule_limits[r], X_r, distance = distance, p=p, normalization= norm_function)#compute_borderbased_gamma(rule_limits[r], X_r[0], X_r[1])#compute_centerbased_gamma(rule_limits[r], X_r[0], X_r[1])
         gamma_all_rules.append(gamma)
 
         # apply relevance
@@ -108,18 +114,36 @@ def risk_tolerant_confiderai_score(X_r, rulesim, rule_limits, changeclsidx, y, r
         #tauprod *= tau
         score_all_rules.append(gamma)
 
-    
-    gamma_arr = np.array(gamma_all_rules)
-    gamma_arr = np.clip(gamma_arr, 1e-15, 1.0)
-    final_gamma = float(np.exp(np.mean(np.log(gamma_arr))))
+    if aggregation == "geometric_mean":
+        gamma_arr = np.array(gamma_all_rules)
+        gamma_arr = np.clip(gamma_arr, 1e-15, 1.0)
+        final_gamma = float(np.exp(np.mean(np.log(gamma_arr))))
 
-    # geometric mean definition (to avoid collapse towards 0)
-    score_arr = np.array(score_all_rules)
-    score_arr = np.clip(score_arr, 1e-15, 1.0)
-    if use_sim:
-        score = float(np.exp(np.mean(np.log(score_arr)))) * 0.5 * (1+q_not_y-q_y)
-    else: 
-        score = float(np.exp(np.mean(np.log(score_arr))))
+        # geometric mean definition (to avoid collapse towards 0)
+        score_arr = np.array(score_all_rules)
+        score_arr = np.clip(score_arr, 1e-15, 1.0)
+        if use_sim:
+            score = float(np.exp(np.mean(np.log(score_arr)))) * 0.5 * (1+q_not_y-q_y)
+        else: 
+            score = float(np.exp(np.mean(np.log(score_arr))))
+    
+    elif aggregation == "sum":
+        gamma_arr = np.sum(gamma_all_rules)
+        final_gamma = 1 - np.clip(gamma_arr, 0, 1)
+
+        score_arr = np.sum(score_all_rules)
+        score = 1 - np.clip(score_arr, 0, 1)
+        if use_sim:
+            score = score * 0.5 * (1+q_not_y-q_y)
+    
+    elif aggregation == "weighted_average":
+        #print("gamma_all_rules: ", gamma_all_rules)
+        weights = np.exp(-beta * np.array(gamma_all_rules))
+        
+        score = np.sum(weights * np.array(gamma_all_rules)) / np.sum(weights)
+        final_gamma = score
+        if use_sim:
+            score = score * 0.5 * (1+q_not_y-q_y)
 
     #print("s(x,y) = ", tauprod)
 
@@ -127,7 +151,7 @@ def risk_tolerant_confiderai_score(X_r, rulesim, rule_limits, changeclsidx, y, r
 
 
 
-def compute_confiderai_score(X, rulesim, rule_limits, changeclsidx, y, relevance, use_relevance = True, use_sim = True):
+def compute_confiderai_score(X, rulesim, rule_limits, changeclsidx, y, relevance, distance = "L1", p = 1,norm_function = "tanh", aggregation = "geometric_mean", beta = None, use_relevance = True, use_sim = True):
 
     N_points = X.shape[0]
     N_rules = rulesim.shape[0]
@@ -139,7 +163,7 @@ def compute_confiderai_score(X, rulesim, rule_limits, changeclsidx, y, relevance
     gamma = np.empty(N_points)
     simterm = np.empty(N_points)
     for i in range(N_points):
-        tau[i], gamma[i], simterm[i] = risk_tolerant_confiderai_score(X[i], rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y, use_relevance=use_relevance, use_sim = use_sim)
+        tau[i], gamma[i], simterm[i] = risk_tolerant_confiderai_score(X[i], rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y,  distance = distance, p = p, norm_function = norm_function, aggregation = aggregation, beta = beta, use_relevance=use_relevance, use_sim = use_sim)
     
     return tau, gamma, simterm
 

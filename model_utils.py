@@ -1,21 +1,17 @@
 import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
-from sklearn.model_selection import train_test_split
-from sklearn import tree
-from sklearn.tree import _tree
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.datasets import make_blobs
-from sklearn.metrics import classification_report
-from sklearn.preprocessing import StandardScaler
+
+from sklearn.model_selection import cross_val_score
+
 import joblib
 from rule_generation_utils import *
 
-def train_decision_tree(data_tr, output = "output", max_n_rules = 10, ccp_alpha = 0, save_model = True, model_path = None):
+def train_decision_tree(data_tr, output = "output", cv_metric = "accuracy", min_samples_rule_thr = 0.0, max_n_rules = 10, ccp_alpha = 0, save_model = True, model_path = None):
     y_train=data_tr[output]
     data_features = data_tr.drop([output],axis=1)
     #train sklearn model on the proper training set 
-    model = DecisionTreeClassifier(random_state=0, max_leaf_nodes=max_n_rules, ccp_alpha=ccp_alpha)
+    model = DecisionTreeClassifier(random_state=0, min_samples_leaf= int(min_samples_rule_thr*len(data_features)), max_leaf_nodes=max_n_rules, ccp_alpha=ccp_alpha) #
+    print(f"5-fold CV ({cv_metric} metric)", cross_val_score(model, data_features, y_train, cv=5))
     model = model.fit(data_features,y_train)
     if save_model and model_path!= None:
         joblib.dump(model, model_path)
@@ -51,4 +47,6 @@ def extract_and_save_rules(model, res_path, rulesetfile_full, data_tr, covering_
     relevance = ComputeRelevances(f"{res_path}/{rulesetfile_full}")#np.zeros(nrules)
 
     return rule_limits, changeclsidx, nrules, relevance 
+
+
 

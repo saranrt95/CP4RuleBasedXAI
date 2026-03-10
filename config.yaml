@@ -2,6 +2,14 @@ experiment_type: benchmark
 
 cp:
   epsilon_range: [0.01, 0.05, 0.1, 0.2, 0.3, 0.4, 0.5]
+  risk_tolerant:
+    distance: Linf
+    p: 1
+    aggregation: weighted_average
+    beta: 10
+  knn:
+    K: 5
+    min_samples: 0
 
 model:
   train_model: true
@@ -9,9 +17,10 @@ model:
   ruleset_file: dt_rules_max50.csv
   max_n_rules: 50
   ccp_alpha: 0
+  min_samples_thr: 0.15
 
 output:
-  res_dir: results/results_20250211_adversarial
+  res_dir: results/20260310_benchmark_wavg_K5_min15perc_v2
   save_plots: true
 
 
@@ -19,7 +28,7 @@ synthetic_dataset:
   generate_data: true
   n_clusters_per_class: 2
   n_features: 2
-  n_points: 10000
+  n_points: 5000
   outputlabel: output
   cls0label: 0
   cls1label: 1

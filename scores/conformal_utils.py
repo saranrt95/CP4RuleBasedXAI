@@ -12,6 +12,8 @@ def GetPredictionRegions(y_calib, scores0, scores1, scores0ts, scores1ts, epsilo
     scores_calib_sorted = np.sort(scores_calib)
 
     qlevel = np.ceil((n_c + 1) * (1 - epsilon)) / n_c
+    if n_c < 100: qlevel = 1 - epsilon
+    #print("qlevel: ", qlevel)
     s_epsilon = np.quantile(scores_calib_sorted, qlevel)
 
     n_test = scores0ts.shape[0]
@@ -39,33 +41,74 @@ def GetPredictionRegions(y_calib, scores0, scores1, scores0ts, scores1ts, epsilo
 
 
 
-
 def evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, score_fn):
+
     n_eps = len(epsilonrange)
+
     avgErr = np.zeros(n_eps)
+    varErr = np.zeros(n_eps)
+
     avgErr_singleton = np.zeros(n_eps)
+    varErr_singleton = np.zeros(n_eps)
 
     empty = np.zeros(n_eps)
+    var_empty = np.zeros(n_eps)
+
     singleton = np.zeros(n_eps)
+    var_singleton = np.zeros(n_eps)
+
     double = np.zeros(n_eps)
+    var_double = np.zeros(n_eps)
 
     avgSize = np.zeros(n_eps)
-    for i, epsilon in enumerate(epsilonrange):
-        # Compute prediction regions
-        C_all, _, _, C_size = GetPredictionRegions(Ycal, tau0cal, tau1cal, tau0ts, tau1ts, epsilon, n_c)
-        
-        n_err = np.sum((Yts != C_all) & (C_all != 2))
-        n_err_singleton = np.sum((Yts!=C_all) & (C_size == 1))
+    varSize = np.zeros(n_eps)
 
-        avgErr[i] = n_err / len(Yts)
-        avgErr_singleton[i] = n_err_singleton/len(Yts)    
-        empty[i] = np.sum(C_size == 0) / len(Yts)
-        singleton[i] = np.sum(C_size == 1) / len(Yts)
-        double[i] = np.sum(C_size == 2) / len(Yts)
-        avgSize[i] = np.sum(C_size)/len(Yts)
+    for i, epsilon in enumerate(epsilonrange):
+
+        C_all, _, _, C_size = GetPredictionRegions(
+            Ycal, tau0cal, tau1cal, tau0ts, tau1ts, epsilon, n_c
+        )
+        err_vec = ((Yts != C_all) & (C_all != 2)).astype(float)
+        err_singleton_vec = ((Yts != C_all) & (C_size == 1)).astype(float)
+
+        empty_vec = (C_size == 0).astype(float)
+        singleton_vec = (C_size == 1).astype(float)
+        double_vec = (C_size == 2).astype(float)
+
+        size_vec = C_size.astype(float)
+
+        avgErr[i] = np.mean(err_vec)
+        avgErr_singleton[i] = np.mean(err_singleton_vec)
+        empty[i] = np.mean(empty_vec)
+        singleton[i] = np.mean(singleton_vec)
+        double[i] = np.mean(double_vec)
+        avgSize[i] = np.mean(size_vec)
+
+        varErr[i] = np.var(err_vec)
+        varErr_singleton[i] = np.var(err_singleton_vec)
+        var_empty[i] = np.var(empty_vec)
+        var_singleton[i] = np.var(singleton_vec)
+        var_double[i] = np.var(double_vec)
+        varSize[i] = np.var(size_vec)
 
         with open(f"{res_path}/metrics.csv","a") as ff:
-            ff.write(f"{score_fn},{epsilon},{avgErr[i]},{singleton[i]},{double[i]},{empty[i]},{avgSize[i]},{avgErr_singleton[i]}\n")
-    return avgErr, avgErr_singleton, empty, singleton, double, avgSize
+            ff.write(
+                f"{score_fn},{epsilon},"
+                f"{avgErr[i]},{varErr[i]},"
+                f"{singleton[i]},{var_singleton[i]},"
+                f"{double[i]},{var_double[i]},"
+                f"{empty[i]},{var_empty[i]},"
+                f"{avgSize[i]},{varSize[i]},"
+                f"{avgErr_singleton[i]},{varErr_singleton[i]}\n"
+            )
+
+    return (
+        avgErr, varErr,
+        avgErr_singleton, varErr_singleton,
+        empty, var_empty,
+        singleton, var_singleton,
+        double, var_double,
+        avgSize, varSize
+    )
 
 

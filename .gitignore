@@ -7,3 +7,4 @@ adversarial_example.ipynb
 data/adversarial_dataset/
 data/fgsm_*
 test_adversarial.sh
+models/
