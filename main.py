@@ -57,7 +57,8 @@ P = config["cp"]["risk_tolerant"]["p"]
 NORM_FN = sys.argv[4] #config["cp"]["risk_tolerant"]["normalization"]
 AGGREGATION = config["cp"]["risk_tolerant"]["aggregation"]
 BETA = config["cp"]["risk_tolerant"]["beta"]
-
+K = config["cp"]["risk_tolerant"]["norm_fun"]["sigmoid"]["k"]
+SHIFT = config["cp"]["risk_tolerant"]["norm_fun"]["sigmoid"]["shift"]
 # paths for folders and files
 res_dir = config['output']["res_dir"]
 res_path = f"{res_dir}/{datasetname}_Rel{USE_RELEV}_Sim{USE_SIM}_{NORM_FN}/"
@@ -169,10 +170,10 @@ rulesim = GeneralizedIoU(parsedruleset, rulesetfile=f"{res_path}/{rulesetfile}",
 
 print("RT-CONFIDERAI")
 
-tau0cal, gamma0cal,simterm0cal = compute_confiderai_score(Xcal, rulesim, rule_limits, changeclsidx, cls0label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, use_relevance=USE_RELEV, use_sim=USE_SIM)
-tau1cal, gamma1cal,simterm1cal = compute_confiderai_score(Xcal, rulesim, rule_limits, changeclsidx, cls1label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, use_relevance=USE_RELEV, use_sim=USE_SIM)
-tau0ts, _,_ = compute_confiderai_score(Xts, rulesim, rule_limits, changeclsidx, cls0label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, use_relevance=USE_RELEV, use_sim=USE_SIM)
-tau1ts,_,_ = compute_confiderai_score(Xts, rulesim, rule_limits, changeclsidx, cls1label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, use_relevance=USE_RELEV, use_sim=USE_SIM)
+tau0cal, gamma0cal,simterm0cal = compute_confiderai_score(Xcal, rulesim, rule_limits, changeclsidx, cls0label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV, use_sim=USE_SIM)
+tau1cal, gamma1cal,simterm1cal = compute_confiderai_score(Xcal, rulesim, rule_limits, changeclsidx, cls1label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV, use_sim=USE_SIM)
+tau0ts, _,_ = compute_confiderai_score(Xts, rulesim, rule_limits, changeclsidx, cls0label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV, use_sim=USE_SIM)
+tau1ts,_,_ = compute_confiderai_score(Xts, rulesim, rule_limits, changeclsidx, cls1label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV, use_sim=USE_SIM)
 
 selectedscores_cal = np.where(Ycal == cls0label, tau0cal, tau1cal)
 

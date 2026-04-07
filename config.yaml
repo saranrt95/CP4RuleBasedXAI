@@ -6,10 +6,15 @@ cp:
     distance: Linf
     p: 1
     aggregation: weighted_average
-    beta: 10
+    beta: 1
+    norm_fun:
+      sigmoid:
+        k: 4
+        shift: 0.5
   knn:
     K: 5
     min_samples: 0
+  
 
 model:
   train_model: true
@@ -20,7 +25,7 @@ model:
   min_samples_thr: 0.15
 
 output:
-  res_dir: results/20260310_benchmark_wavg_K5_min15perc_v2
+  res_dir: results/20260330_beta1_k4_s05
   save_plots: true
 
 
