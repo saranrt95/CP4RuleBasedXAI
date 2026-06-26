@@ -1,9 +1,6 @@
 
 ## CP4RULEBASEDXAI
 This code allows to perform conformal prediction for rule-based binary classifiers. It extends our previous score function, CONFIDERAI [1], to also include non-overlapping, mutually exclusive, rules, being applicable for Decision-Tree-like sklearn-compatible classifiers.
-
-[CONFIDERAI_comparison_concept.pdf](https://github.com/user-attachments/files/29377189/CONFIDERAI_comparison_concept.pdf)
-
 The code implements two novel scores:
 
 1) Risk-Averse CONFIDERAI
