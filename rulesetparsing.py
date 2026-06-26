@@ -155,58 +155,6 @@ def fill_missing_features(datafile, ruleinfo, featurelabels, nfeatures):
 
 
 
-def _parse_rule(rule_text, rule_id, outputlabel):
-    # Extract output class
-    match_class = re.search(rf'THEN\s+{outputlabel}\s+in\s+(\d+)', rule_text)
-    output_class = int(match_class.group(1)) if match_class else None
-
-    # Remove the RULE prefix and THEN suffix
-    # 1) Remove "RULE n: IF"
-    rule_body = re.sub(r'^RULE\s+\d+:\s+IF\s+', '', rule_text, flags=re.IGNORECASE)
-    # 2) Remove THEN ... part
-    rule_body = re.sub(rf'\s+THEN\s+{outputlabel}\s+in\s+\d+', '', rule_body, flags=re.IGNORECASE)
-
-    # Now split on AND
-    conditions = [c.strip() for c in re.split(r'\s+AND\s+', rule_body, flags=re.IGNORECASE)]
-    #print(conditions)
-    parsed_rows = []
-    for cond in conditions:
-        # Case 1: two-sided bounds: value1 < feature <= value2
-        m = re.match(r'(-?\d+\.?\d*)\s*(<|<=)\s*([A-Za-z_][A-Za-z0-9_]*)\s*(<|<=|>|>=)\s*(-?\d+\.?\d*)', cond)
-        #print("m: ", m)
-        if m:
-            val1, op1, feature, op2, val2 = m.groups()
-            val1 = float(val1)
-            val2 = float(val2)
-            lower = val1 if op1 in ('<', '<=') else ""
-            upper = val2 if op2 in ('<', '<=') else ""
-            parsed_rows.append({
-                'Output Class': output_class,
-                'Rule ID': rule_id,
-                'Feature': feature,
-                'Lower': lower,
-                'Upper': upper
-            })
-            continue
-
-        # Case 2: single comparison: feature op value
-        m2 = re.match(r'([A-Za-z_][A-Za-z0-9_]*)\s*(<|<=|>|>=)\s*(-?\d+\.?\d*)', cond)
-        #print("m2: ", m2)
-        if m2:
-            feature, op, val = m2.groups()
-            val = float(val)
-            lower = val if op in ('>', '>=') else ""
-            upper = val if op in ('<', '<=') else ""
-            parsed_rows.append({
-                'Output Class': output_class,
-                'Rule ID': rule_id,
-                'Feature': feature,
-                'Lower': lower,
-                'Upper': upper
-            })
-            continue
-
-    return parsed_rows
 
 def parse_rule(rule_text, rule_id, outputlabel):
     # Extract final class
@@ -327,30 +275,6 @@ def clean_ruleset_file(rulesetfile, datafile, featurelabels, outputlabel):
     final_df = pd.DataFrame(final_rows)
     final_df = final_df.sort_values(["Rule ID", "Feature"]).reset_index(drop=True)
     return final_df
-
-def _clean_ruleset_file(rulesetfile, datafile, featurelabels, nfeatures, outputlabel):
-    """Main function: parse, clean, and complete rule set into structured DataFrame."""
-    ruledata = pd.read_csv(rulesetfile, header=None)
-    rules = list(ruledata[0])
-    rc = 0
-
-    parsed_rules = []
-    for rule in rules:
-        rc+=1
-        parsed_rule = parse_rule(rule, rc, outputlabel)
-        parsed_rules.append(parsed_rule)
-      
-    flat_parsed_list = [item for sublist in parsed_rules for item in sublist]
-    parsedruledf = pd.DataFrame(flat_parsed_list)
-    # impute missing bounds
-    filledruledf = impute_missing_thresholds(datafile, parsedruledf)
-
-    # fill missing features
-    filledruledf = filledruledf.astype({'Rule ID': 'int64', 'Output Class': 'int64'})
-    completeruledf = fill_missing_features(datafile, filledruledf, featurelabels, nfeatures)
-    completeruledf = completeruledf.astype({'Rule ID': 'int64', 'Output Class': 'int64'})
-
-    return completeruledf
 
 
 

@@ -94,6 +94,7 @@ with open(f"{res_path}/metrics.csv","w") as ff:
 
 # generate synthetic Gaussian data according to the scenario
 if config['experiment_type']=='synthetic':
+    selected_epsilon = config["synthetic_dataset"]["plot_epsilon"]
 
     if config['synthetic_dataset']['generate_data']:
         outputlabel = config['synthetic_dataset']['outputlabel']
@@ -139,7 +140,7 @@ if config['model']["train_model"]:
     min_samples_thr = config["model"]["min_samples_thr"]
     model = train_decision_tree(data_tr, output=outputlabel, min_samples_rule_thr=min_samples_thr, max_n_rules = max_n_rules, ccp_alpha=ccp_alpha, save_model = True, model_path = f"{res_path}/{config['model']['model_name']}.sav") # train_IREP(data_tr, output=outputlabel, save_model = True, model_path = f"{res_path}/{config['model']['model_name']}.sav")#
 else:
-    model = joblib.load(f"{res_path}/{config['model_name']}.sav")
+    model = joblib.load(f"{res_path}/{config['model']['model_name']}.sav")
 
 
 y_pred_ts = get_decision_tree_predictions(model, data_ts, output=outputlabel)
@@ -187,8 +188,9 @@ avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton,
 plot_metrics(epsilonrange, avgErr, avgSize, "RT-CONFIDERAI", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 plot_calibration_scores_distribution(selectedscores_cal, "RT-CONFIDERAI", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
-if n_features == 2:
-    plot_prediction_regions(Xts, Ycal, tau0cal, tau1cal, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "RT-CONFIDERAI", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+if (config['experiment_type']=='synthetic') and (n_features == 2):
+    
+    plot_prediction_regions(Xts, Ycal, tau0cal, tau1cal, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "RT-CONFIDERAI", selected_eps = selected_epsilon, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 ### RISK-AVERSE CONFIDERAI ####
 print("RA-CONFIDERAI")
@@ -208,8 +210,8 @@ avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton,
 plot_metrics(epsilonrange, avgErr, avgSize, "RA-CONFIDERAI", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 plot_calibration_scores_distribution(selectedscores_cal, "RA-CONFIDERAI", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
-if n_features == 2:
-    plot_prediction_regions(Xts, Ycal, tau0cal, tau1cal, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "RA-CONFIDERAI", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+if (config['experiment_type']=='synthetic') and (n_features == 2):
+    plot_prediction_regions(Xts, Ycal, tau0cal, tau1cal, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "RA-CONFIDERAI", selected_eps = selected_epsilon, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 
 
@@ -232,8 +234,8 @@ avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton,
 plot_metrics(epsilonrange, avgErr, avgSize, "margin", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 plot_calibration_scores_distribution(selectedscores_cal, "margin", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
-if n_features == 2:
-    plot_prediction_regions(Xts, Ycal, scores0_margin, scores1_margin, scores0ts_margin, scores1ts_margin, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "margin", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+if (config['experiment_type']=='synthetic') and (n_features == 2):
+    plot_prediction_regions(Xts, Ycal, scores0_margin, scores1_margin, scores0ts_margin, scores1ts_margin, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "margin", selected_eps = selected_epsilon, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 #### LAC ########
 print("LAC")
@@ -252,8 +254,8 @@ avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton,
 plot_metrics(epsilonrange, avgErr, avgSize, "LAC", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 plot_calibration_scores_distribution(selectedscores_cal, "LAC", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
-if n_features == 2:
-    plot_prediction_regions(Xts, Ycal, scores0_lac, scores1_lac, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "LAC", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+if (config['experiment_type']=='synthetic') and (n_features == 2):
+    plot_prediction_regions(Xts, Ycal, scores0_lac, scores1_lac, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "LAC", selected_eps = selected_epsilon, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 ######### KNN ###########
 
@@ -267,8 +269,8 @@ Xts_rules, Yts_rules, scores0_test_knn, scores1_test_knn = KNN_Score(Xts, Yts, f
 #    selectedscores_cal = np.where(Ycal_rules[r] == cls0label, scores0_cal_knn[r], scores1_cal_knn[r])
 #    selected_cal_rulewise.append(selectedscores_cal)
 
-#if n_features == 2:
-#    plot_score(Xts, scores0_test_knn, scores1_test_knn, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "knn", res_path = res_path)
+if n_features == 2:
+    plot_score_rulewise(Xts_rules, scores0_test_knn, scores1_test_knn, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "knn", res_path = res_path)
 
 
 avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal_knn(Ycal_rules, scores0_cal_knn, scores1_cal_knn, epsilonrange, Yts_rules, scores0_test_knn, scores1_test_knn, res_path, "knn")
@@ -278,5 +280,6 @@ avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton,
 plot_metrics(epsilonrange, avgErr, avgSize, "knn", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
 plot_calibration_scores_distribution(selectedscores_cal, "knn", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
-#if n_features == 2:
-#    plot_prediction_regions(Xts, Ycal, scores0_cal_knn, scores1_cal_knn, scores0_test_knn, scores1_test_knn, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "knn", selected_eps = 0.01, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+if (config['experiment_type']=='synthetic') and (n_features == 2):
+    C_all, _, _, C_size = get_prediction_regions_kNN(Ycal_rules, scores0_cal_knn, scores1_cal_knn, scores0_test_knn, scores1_test_knn, selected_epsilon)
+    plot_prediction_regions_knn(Xts_rules, C_all, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "knn", selected_eps = selected_epsilon, save_plots_flag = save_plots_flag, res_path = res_path, show = False)

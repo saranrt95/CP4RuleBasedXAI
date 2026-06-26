@@ -96,7 +96,7 @@ def KNN_Score(X, Y, ruleset_path, featurelabels, outputlabel, cls0label, cls1lab
         knnscores1_cal.append(
             compute_knn_score_rulewise(Xcal_rules[r], X_cal, Y_cal, cls1label, K=K)
         )
-    # return lists of arrays
+
     return Xcal_rules, Ycal_rules, knnscores0_cal, knnscores1_cal #scores0_cal_knn, scores1_cal_knn
 
 def get_prediction_regions_kNN(ycal_rules, scores0_cal, scores1_cal, scores0_ts, scores1_ts, epsilon):

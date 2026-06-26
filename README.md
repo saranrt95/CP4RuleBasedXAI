@@ -1,13 +1,13 @@
-## CP4RULEBASEDXAI: CONFIDERAI extension to mutually exclusive rules
+## CP4RULEBASEDXAI
 
 This code allows to perform conformal prediction for rule-based binary classifiers. It extends our previous score function, CONFIDERAI [1], to also include non-overlapping, mutually exclusive, rules, being applicable for Decision-Tree-like sklearn-compatible classifiers.
 
 The code implements two novel scores:
 
-1) Risk-averse CONFIDERAI
+1) Risk-Averse CONFIDERAI
 2) Risk-Tolerant CONFIDERAI 
 
-and compares the results with more traditional score functions (LAC, margin-based, and K-Nearest Neighbors).
+and compares the results with more traditional score functions (LAC, MARGIN, and K-Nearest Neighbors).
 
 # How to use
 
@@ -23,6 +23,6 @@ The usage of this code on custom data is very simple and intuitive.
 [1] Narteni, S., Carlevaro, A., Dabbene, F., Muselli, M., & Mongelli, M. (2025). A novel score function for conformal prediction in rule-based binary classification. Pattern Recognition, 112219.
 
 # Citation
-This code can be used to replicate the experiments of our paper _S. Narteni, A. Carlevaro, F. Dabbene, M.Mongelli "Rule-based Conformal Prediction for Risk-aware Decision Making" (2026)_, currently submitted at ACM AI Letters Journal.
+This code can be used to replicate the experiments of our paper _S. Narteni, A. Carlevaro, F. Dabbene, M. Mongelli "Rule-based Conformal Prediction for Risk-aware Decision Making" (2026)_, currently under submission at IEEE Transactions on Reliability journal.
 
  

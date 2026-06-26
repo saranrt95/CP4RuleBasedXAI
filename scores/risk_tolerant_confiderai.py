@@ -6,7 +6,7 @@ from rule_generation_utils import *
 #### RT-CONFIDERAI SCORE ######
 
 
-def compute_centerbased_gamma_multid(rule_limits, X_r, distance="L1", normalization="tanh", p=1, k = 1, shift = 0):
+def compute_centerbased_gamma_multid(rule_limits, X_r, distance="L1", normalization="sigmoid", p=1, k = 1, shift = 0):
     """
     rule_limits: array-like of shape (2*d,) -> [l1,u1,l2,u2,...]
     X_r: array-like of shape (d,)
@@ -45,7 +45,7 @@ def compute_centerbased_gamma_multid(rule_limits, X_r, distance="L1", normalizat
     elif normalization == "tanh":
         tau_geom = np.tanh(tau_geom)
     elif normalization == "sigmoid":
-        tau_geom = 1/(1+np.exp(-k*(tau_geom-shift))) #2*(1/(1+np.exp(-k*(tau_geom-shift))) - 0.5)
+        tau_geom = 2*(1/(1+np.exp(-k*(tau_geom-shift))) - 0.5)
     elif normalization == "atan":
         tau_geom = (2/np.pi) *  np.atan((np.pi/2)*tau_geom)
     else:

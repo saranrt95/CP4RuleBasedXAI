@@ -1,5 +1,5 @@
 #!/bin/bash
-for dataset in $(echo 'breastW' 'liver' 'spambase'); do 
+for dataset in $(echo 'rul'); do 
 	for relevance in $(echo 'true');do
         for similarity in $(echo 'false');do
 			for normalization in $(echo 'sigmoid'); do 
