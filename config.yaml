@@ -5,7 +5,6 @@ cp:
   risk_tolerant:
     distance: Linf
     p: 1
-    aggregation: weighted_average
     beta: 10
     norm_fun:
       sigmoid:
@@ -25,7 +24,7 @@ model:
   min_samples_thr: 0.15
 
 output:
-  res_dir: results/paper_ieee_review
+  res_dir: results/paper_ieee_review_v2
   save_plots: true
 
 

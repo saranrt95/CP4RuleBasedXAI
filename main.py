@@ -41,15 +41,13 @@ config = load_config()
 
 parser = argparse.ArgumentParser()
 parser.add_argument("--dataset", type = str)
-parser.add_argument("--use_relevance", type=lambda x: x.lower() == "true")
-parser.add_argument("--use_similarity", type=lambda x: x.lower() == "true")
-parser.add_argument("--normalization")
+parser.add_argument("--use_relevance", type=lambda x: x.lower() == "true", default = True)
+parser.add_argument("--normalization", type = str, default = "sigmoid", help = "Normalization function to be used for RT-CONFIDERAI")
 parser.add_argument("--beta", type=float, default=10, help="Risk-tolerant CONFIDERAI beta value")
 args = parser.parse_args()
 
 datasetname = args.dataset
 USE_RELEV = args.use_relevance
-USE_SIM = args.use_similarity
 NORM_FN = args.normalization
 BETA = args.beta
 
@@ -62,13 +60,13 @@ epsilonrange = config["cp"]["epsilon_range"]
 n_eps = len(epsilonrange)
 DISTANCE = config["cp"]["risk_tolerant"]["distance"]
 P = config["cp"]["risk_tolerant"]["p"]
-AGGREGATION = config["cp"]["risk_tolerant"]["aggregation"]
+
 #BETA = config["cp"]["risk_tolerant"]["beta"]
 K = config["cp"]["risk_tolerant"]["norm_fun"]["sigmoid"]["k"]
 SHIFT = config["cp"]["risk_tolerant"]["norm_fun"]["sigmoid"]["shift"]
 # paths for folders and files
 res_dir = config['output']["res_dir"]
-res_path = f"{res_dir}/{datasetname}_Rel{USE_RELEV}_Sim{USE_SIM}_{NORM_FN}_Beta{BETA}/"
+res_path = f"{res_dir}/{datasetname}_Rel{USE_RELEV}_SimFalse_{NORM_FN}_Beta{BETA}/"
 os.makedirs(res_path, exist_ok=True)
 
 run_config = deepcopy(config)
@@ -172,21 +170,14 @@ wrong_1_ts = Xts[(Yts == cls0label) & (y_pred_ts == cls1label)]
 rule_limits, changeclsidx, nrules, relevance = extract_and_save_rules(model, res_path, rulesetfile, data_tr, covering_threshold = 0.0, output=outputlabel, save = config['model']['train_model'])
 
 
-# parse the ruleset to extract each condition and fill each rule with missing thresholds
-parsedruleset = clean_ruleset_file(f"{res_path}/{rulesetfile}", data_tr, featurelabels, outputlabel)
-parsedruleset.Feature = parsedruleset.Feature.astype("category")
-parsedruleset.Feature = parsedruleset.Feature.cat.set_categories(featurelabels)
-parsedruleset = parsedruleset.sort_values(["Rule ID", "Feature"])
-rulesim = GeneralizedIoU(parsedruleset, rulesetfile=f"{res_path}/{rulesetfile}", SAVE_RS_VALUES=True, save_path=res_path+rulesim_path) 
-'''
 ###### RT-CONFIDERAI #########
 
 print("RT-CONFIDERAI")
 
-tau0cal, gamma0cal,simterm0cal = compute_confiderai_score(Xcal, rulesim, rule_limits, changeclsidx, cls0label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV, use_sim=USE_SIM)
-tau1cal, gamma1cal,simterm1cal = compute_confiderai_score(Xcal, rulesim, rule_limits, changeclsidx, cls1label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV, use_sim=USE_SIM)
-tau0ts, _,_ = compute_confiderai_score(Xts, rulesim, rule_limits, changeclsidx, cls0label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV, use_sim=USE_SIM)
-tau1ts,_,_ = compute_confiderai_score(Xts, rulesim, rule_limits, changeclsidx, cls1label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, aggregation = AGGREGATION, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV, use_sim=USE_SIM)
+tau0cal, gamma0cal = compute_confiderai_score(Xcal, rule_limits, changeclsidx, cls0label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV)
+tau1cal, gamma1cal = compute_confiderai_score(Xcal, rule_limits, changeclsidx, cls1label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV)
+tau0ts, _ = compute_confiderai_score(Xts, rule_limits, changeclsidx, cls0label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV)
+tau1ts,_ = compute_confiderai_score(Xts, rule_limits, changeclsidx, cls1label, relevance,  distance = DISTANCE, p = P, norm_function = NORM_FN, beta = BETA, k=K, shift=SHIFT, use_relevance=USE_RELEV)
 
 selectedscores_cal = np.where(Ycal == cls0label, tau0cal, tau1cal)
 
@@ -206,6 +197,13 @@ if (config['experiment_type']=='synthetic') and (n_features == 2):
 
 ### RISK-AVERSE CONFIDERAI ####
 print("RA-CONFIDERAI")
+# parse the ruleset to extract each condition and fill each rule with missing thresholds
+parsedruleset = clean_ruleset_file(f"{res_path}/{rulesetfile}", data_tr, featurelabels, outputlabel)
+parsedruleset.Feature = parsedruleset.Feature.astype("category")
+parsedruleset.Feature = parsedruleset.Feature.cat.set_categories(featurelabels)
+parsedruleset = parsedruleset.sort_values(["Rule ID", "Feature"])
+rulesim = GeneralizedIoU(parsedruleset, rulesetfile=f"{res_path}/{rulesetfile}", SAVE_RS_VALUES=True, save_path=res_path+rulesim_path) 
+
 tau0cal, gamma0cal,simterm0cal, _ = compute_dataset_score(Xcal, rulesim, rule_limits, changeclsidx, cls0label, relevance)
 tau1cal, gamma1cal,simterm1cal, _ = compute_dataset_score(Xcal, rulesim, rule_limits, changeclsidx, cls1label, relevance)
 tau0ts, _,_,_ = compute_dataset_score(Xts, rulesim, rule_limits, changeclsidx, cls0label, relevance)
@@ -268,7 +266,7 @@ plot_metrics(epsilonrange, avgErr, avgSize, "LAC", save_plots_flag = save_plots_
 plot_calibration_scores_distribution(selectedscores_cal, "LAC", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 if (config['experiment_type']=='synthetic') and (n_features == 2):
     plot_prediction_regions(Xts, Ycal, scores0_lac, scores1_lac, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "LAC", selected_eps = selected_epsilon, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
-'''
+
 
 ######### KNN ###########
 

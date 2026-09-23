@@ -91,17 +91,17 @@ def compute_class_similarity_terms(rulesim, changeclsidx, y):
     return W_y, C_y
 
 
-def risk_tolerant_confiderai_score(X_r, rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y, distance = "L1", p=1, norm_function = "tanh", aggregation = "geometric_mean", beta = 1, k=1, shift = 0, use_relevance = True, use_sim = True):
+def risk_tolerant_confiderai_score(X_r, rule_limits, changeclsidx, y, relevance, distance = "L1", p=1, norm_function = "sigmoid", beta = 1, k=1, shift = 0, use_relevance = True):
 
     if y == 0:
         idxrules = range(changeclsidx-1)#verified[verified < changeclsidx-1]
     elif y == 1:
-        idxrules = range(changeclsidx-1, rulesim.shape[0])#verified[verified >= changeclsidx-1]
+        idxrules = range(changeclsidx-1, len(relevance))#verified[verified >= changeclsidx-1]
     
     score_all_rules = []
 
     gamma_all_rules = []#1
-    sim_term_tot = []#1
+
 
     for r in idxrules:#idxrules:
         gamma = compute_centerbased_gamma_multid(rule_limits[r], X_r, distance = distance, p=p, normalization= norm_function, k = k, shift=shift)#compute_borderbased_gamma(rule_limits[r], X_r[0], X_r[1])#compute_centerbased_gamma(rule_limits[r], X_r[0], X_r[1])
@@ -114,58 +114,29 @@ def risk_tolerant_confiderai_score(X_r, rulesim, rule_limits, changeclsidx, y, r
         #tauprod *= tau
         score_all_rules.append(gamma)
 
-    if aggregation == "geometric_mean":
-        gamma_arr = np.array(gamma_all_rules)
-        gamma_arr = np.clip(gamma_arr, 1e-15, 1.0)
-        final_gamma = float(np.exp(np.mean(np.log(gamma_arr))))
-
-        # geometric mean definition (to avoid collapse towards 0)
-        score_arr = np.array(score_all_rules)
-        score_arr = np.clip(score_arr, 1e-15, 1.0)
-        if use_sim:
-            score = float(np.exp(np.mean(np.log(score_arr)))) * 0.5 * (1+q_not_y-q_y)
-        else: 
-            score = float(np.exp(np.mean(np.log(score_arr))))
-    
-    elif aggregation == "sum":
-        gamma_arr = np.sum(gamma_all_rules)
-        final_gamma = 1 - np.clip(gamma_arr, 0, 1)
-
-        score_arr = np.sum(score_all_rules)
-        score = 1 - np.clip(score_arr, 0, 1)
-        if use_sim:
-            score = score * 0.5 * (1+q_not_y-q_y)
-    
-    elif aggregation == "weighted_average":
         #print("gamma_all_rules: ", gamma_all_rules)
         weights = np.exp(-beta * np.array(gamma_all_rules))
         
         score = np.sum(weights * np.array(gamma_all_rules)) / np.sum(weights)
         final_gamma = score
-        if use_sim:
-            score = score * 0.5 * (1+q_not_y-q_y)
 
     #print("s(x,y) = ", tauprod)
 
-    return score, final_gamma, 0.5 * (1+q_not_y-q_y)
+    return score, final_gamma
 
 
 
-def compute_confiderai_score(X, rulesim, rule_limits, changeclsidx, y, relevance, distance = "Linf", p = 1,norm_function = "sigmoid", aggregation = "weighted_average", beta = 1, k = 1, shift = 0, use_relevance = True, use_sim = False):
+def compute_confiderai_score(X, rule_limits, changeclsidx, y, relevance, distance = "Linf", p = 1,norm_function = "sigmoid", beta = 1, k = 1, shift = 0, use_relevance = True):
 
     N_points = X.shape[0]
-    N_rules = rulesim.shape[0]
-
-    q_y, q_not_y = compute_class_similarity_terms(rulesim, changeclsidx, y)
 
     # Compute score for each point
     tau = np.empty(N_points)
     gamma = np.empty(N_points)
-    simterm = np.empty(N_points)
     for i in range(N_points):
-        tau[i], gamma[i], simterm[i] = risk_tolerant_confiderai_score(X[i], rulesim, rule_limits, changeclsidx, y, relevance, q_y, q_not_y,  distance = distance, p = p, norm_function = norm_function, aggregation = aggregation, beta = beta, k=k, shift = shift, use_relevance=use_relevance, use_sim = use_sim)
+        tau[i], gamma[i] = risk_tolerant_confiderai_score(X[i], rule_limits, changeclsidx, y, relevance, distance = distance, p = p, norm_function = norm_function, beta = beta, k=k, shift = shift, use_relevance=use_relevance)
     
-    return tau, gamma, simterm
+    return tau, gamma
 
 
 
