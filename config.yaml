@@ -25,8 +25,8 @@ model:
   min_samples_thr: 0.15
 
 output:
-  res_dir: results/paper_ieee_synthetic_n50_min15perc
-  save_plots: false
+  res_dir: results/paper_ieee_review
+  save_plots: true
 
 
 synthetic_dataset:

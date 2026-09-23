@@ -97,16 +97,20 @@ def KNN_Score(X, Y, ruleset_path, featurelabels, outputlabel, cls0label, cls1lab
             compute_knn_score_rulewise(Xcal_rules[r], X_cal, Y_cal, cls1label, K=K)
         )
 
-    return Xcal_rules, Ycal_rules, knnscores0_cal, knnscores1_cal #scores0_cal_knn, scores1_cal_knn
+    return Xcal_rules, Ycal_rules, knnscores0_cal, knnscores1_cal, cal_idx #scores0_cal_knn, scores1_cal_knn
 
 def get_prediction_regions_kNN(ycal_rules, scores0_cal, scores1_cal, scores0_ts, scores1_ts, epsilon):
 
     R = len(scores0_cal)
     #n_test = sum(len(idx) for idx in test_idx)
 
-    C_all = []#np.full(n_test, np.nan)
-    C_size = []#np.full(n_test, 0.0)
-    s_epsilon = []#np.full(R, np.nan)
+    #C_all = []#np.full(n_test, np.nan)
+    #C_size = []#np.full(n_test, 0.0)
+    #s_epsilon = []#np.full(R, np.nan)
+
+    C_all = [np.array([]) for _ in range(R)]
+    C_size = [np.array([]) for _ in range(R)]
+    s_epsilon = [np.nan for _ in range(R)]
     #print("epsilon: ", epsilon)
     for r in range(R):
 
@@ -126,9 +130,12 @@ def get_prediction_regions_kNN(ycal_rules, scores0_cal, scores1_cal, scores0_ts,
         )
         #print(f"r: {r}, s_eps_r: {s_eps_r}")
         #idx = test_idx[r]
-        C_all.append(C_eps_r)
-        C_size.append(C_size_r)
-        s_epsilon.append(s_eps_r)
+        #C_all.append(C_eps_r)
+        #C_size.append(C_size_r)
+        #s_epsilon.append(s_eps_r)
+        C_all[r] = C_eps_r
+        C_size[r] = C_size_r
+        s_epsilon[r] = s_eps_r
 
 
     return C_all, s_epsilon, None, C_size
@@ -143,16 +150,26 @@ def evaluate_conformal_knn(
     tau0ts_rules,
     tau1ts_rules,
     res_path,
-    score_fn
-):
+    score_fn,
+    Xts=None, y_pred_ts=None, featurelabels = None, cls0label=0, cls1label=1, test_rule_indices=None):
 
     n_eps = len(epsilonrange)
 
     avgErr = np.zeros(n_eps)
     stdErr = np.zeros(n_eps)
 
+    avgErr0 = np.zeros(n_eps)
+    varErr0 = np.zeros(n_eps)
+    avgErr1 = np.zeros(n_eps)
+    varErr1 = np.zeros(n_eps)
+    
     avgErr_singleton = np.zeros(n_eps)
     stdErr_singleton = np.zeros(n_eps)
+
+    avgErr0_singleton = np.zeros(n_eps)
+    varErr0_singleton = np.zeros(n_eps)
+    avgErr1_singleton = np.zeros(n_eps)
+    varErr1_singleton = np.zeros(n_eps)
 
     empty = np.zeros(n_eps)
     std_empty = np.zeros(n_eps)
@@ -177,11 +194,53 @@ def evaluate_conformal_knn(
             epsilon
         )
 
+        if (Xts is not None and test_rule_indices is not None and y_pred_ts is not None and featurelabels is not None):
+            rule_frames = []
+
+            for r, C_r in enumerate(C_all):
+                if len(C_r) == 0:
+                    continue
+
+                def decode_prediction_set(code):
+                    if code == 0:
+                        return [cls0label]
+                    if code == 1:
+                        return [cls1label]
+                    if code == 2:
+                        return [cls0label, cls1label]
+                    if code == 3:
+                        return []
+                    return None  # e.g. undefined KNN score
+
+                df_r = pd.DataFrame(Xts[test_rule_indices[r]], columns=featurelabels)
+                df_r["Yts"] = Yts_rules[r]
+                df_r["y_pred"] = np.asarray(y_pred_ts)[test_rule_indices[r]]
+                df_r["prediction_set"] = [decode_prediction_set(c) for c in C_r]
+
+                # Used only to restore original test-set ordering.
+                df_r["_test_index"] = test_rule_indices[r]
+                rule_frames.append(df_r)
+
+            if rule_frames:
+                prediction_table = pd.concat(rule_frames, ignore_index=True).sort_values("_test_index").drop(columns="_test_index")
+
+                prediction_table.to_excel(f"{res_path}/predictions_knn_epsilon_{epsilon}.xlsx", index=False)
+
         err_mean_rules = []
         err_std_rules = []
 
+        err0_mean_rules = []
+        err0_std_rules = []
+        err1_mean_rules = []
+        err1_std_rules = []
+
         err_singleton_mean_rules = []
         err_singleton_std_rules = []
+
+        err0_singleton_mean_rules = []
+        err0_singleton_std_rules = []
+        err1_singleton_mean_rules = []
+        err1_singleton_std_rules = []
 
         empty_mean_rules = []
         empty_std_rules = []
@@ -208,7 +267,13 @@ def evaluate_conformal_knn(
 
             err_vec = ((Yts_r != C_r) & (C_r != 2)).astype(float)
             err_singleton_vec = ((Yts_r != C_r) & (size_r == 1)).astype(float)
-
+            err_singleton0_vec = ((Yts_r != C_r) & (size_r == 1) & (Yts_r == 0)).astype(float)
+            err_singleton1_vec = ((Yts_r != C_r) & (size_r == 1) & (Yts_r == 1)).astype(float)
+    
+            # class-conditional errors
+            err0_vec = ((Yts_r != C_r) & (C_r != 2) & (Yts_r == 0)).astype(float)
+            err1_vec = ((Yts_r != C_r) & (C_r != 2) & (Yts_r == 1)).astype(float)
+            
             empty_vec = (size_r == 0).astype(float)
             singleton_vec = (size_r == 1).astype(float)
             double_vec = (size_r == 2).astype(float)
@@ -217,9 +282,17 @@ def evaluate_conformal_knn(
 
             err_mean_rules.append(np.mean(err_vec))
             err_std_rules.append(np.std(err_vec))
+            err0_mean_rules.append(np.mean(err0_vec))
+            err0_std_rules.append(np.std(err0_vec))
+            err1_mean_rules.append(np.mean(err1_vec))
+            err1_std_rules.append(np.std(err1_vec))
 
             err_singleton_mean_rules.append(np.mean(err_singleton_vec))
             err_singleton_std_rules.append(np.std(err_singleton_vec))
+            err0_singleton_mean_rules.append(np.mean(err_singleton0_vec))
+            err0_singleton_std_rules.append(np.std(err_singleton0_vec))
+            err1_singleton_mean_rules.append(np.mean(err_singleton1_vec))
+            err1_singleton_std_rules.append(np.std(err_singleton1_vec))
 
             empty_mean_rules.append(np.mean(empty_vec))
             empty_std_rules.append(np.std(empty_vec))
@@ -235,9 +308,17 @@ def evaluate_conformal_knn(
 
         avgErr[i] = np.mean(err_mean_rules)
         stdErr[i] = np.mean(err_std_rules)
+        avgErr0[i] = np.mean(err0_mean_rules)
+        varErr0[i] = np.mean(err0_std_rules)
+        avgErr1[i] = np.mean(err1_mean_rules)
+        varErr1[i] = np.mean(err1_std_rules)
 
         avgErr_singleton[i] = np.mean(err_singleton_mean_rules)
         stdErr_singleton[i] = np.mean(err_singleton_std_rules)
+        avgErr0_singleton[i] = np.mean(err0_singleton_mean_rules)
+        varErr0_singleton[i] = np.mean(err0_singleton_std_rules)
+        avgErr1_singleton[i] = np.mean(err1_singleton_mean_rules)
+        varErr1_singleton[i] = np.mean(err1_singleton_std_rules)
 
         empty[i] = np.mean(empty_mean_rules)
         std_empty[i] = np.mean(empty_std_rules)
@@ -255,15 +336,21 @@ def evaluate_conformal_knn(
             ff.write(
                 f"{score_fn},{epsilon},"
                 f"{avgErr[i]},{stdErr[i]},"
+                f"{avgErr0[i]},{varErr0[i]},"
+                f"{avgErr1[i]},{varErr1[i]},"
                 f"{singleton[i]},{std_singleton[i]},"
                 f"{double[i]},{std_double[i]},"
                 f"{empty[i]},{std_empty[i]},"
                 f"{avgSize[i]},{stdSize[i]},"
-                f"{avgErr_singleton[i]},{stdErr_singleton[i]}\n"
+                f"{avgErr_singleton[i]},{stdErr_singleton[i]},"
+                f"{avgErr0_singleton[i]},{varErr0_singleton[i]},"
+                f"{avgErr1_singleton[i]},{varErr1_singleton[i]}\n"
             )
 
     return (
         avgErr, stdErr,
+        avgErr0, varErr0,
+        avgErr1, varErr1,
         avgErr_singleton, stdErr_singleton,
         empty, std_empty,
         singleton, std_singleton,

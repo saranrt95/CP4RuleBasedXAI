@@ -9,7 +9,10 @@ from sklearn.datasets import make_blobs
 from sklearn.metrics import classification_report
 import joblib
 import warnings
+import argparse
 warnings.filterwarnings("ignore", message="X does not have valid feature names*")
+from copy import deepcopy
+
 
 from data_utils import *
 from model_utils import *
@@ -36,15 +39,20 @@ def load_config(path="config.yaml"):
 
 config = load_config()
 
+parser = argparse.ArgumentParser()
+parser.add_argument("--dataset", type = str)
+parser.add_argument("--use_relevance", type=lambda x: x.lower() == "true")
+parser.add_argument("--use_similarity", type=lambda x: x.lower() == "true")
+parser.add_argument("--normalization")
+parser.add_argument("--beta", type=float, default=10, help="Risk-tolerant CONFIDERAI beta value")
+args = parser.parse_args()
 
+datasetname = args.dataset
+USE_RELEV = args.use_relevance
+USE_SIM = args.use_similarity
+NORM_FN = args.normalization
+BETA = args.beta
 
-# command line variables
-if len(sys.argv)!=5:
-    print(f"Usage: {sys.argv[0]} <dataset> <use_relevance (true|false)> <use_similarity (true|false)>")
-    sys.exit(0)
-datasetname = sys.argv[1]
-USE_RELEV = sys.argv[2].lower() == "true"
-USE_SIM = sys.argv[3].lower() == "true"
 
 print("DATASET: ", datasetname)
 
@@ -54,15 +62,19 @@ epsilonrange = config["cp"]["epsilon_range"]
 n_eps = len(epsilonrange)
 DISTANCE = config["cp"]["risk_tolerant"]["distance"]
 P = config["cp"]["risk_tolerant"]["p"]
-NORM_FN = sys.argv[4] #config["cp"]["risk_tolerant"]["normalization"]
 AGGREGATION = config["cp"]["risk_tolerant"]["aggregation"]
-BETA = config["cp"]["risk_tolerant"]["beta"]
+#BETA = config["cp"]["risk_tolerant"]["beta"]
 K = config["cp"]["risk_tolerant"]["norm_fun"]["sigmoid"]["k"]
 SHIFT = config["cp"]["risk_tolerant"]["norm_fun"]["sigmoid"]["shift"]
 # paths for folders and files
 res_dir = config['output']["res_dir"]
-res_path = f"{res_dir}/{datasetname}_Rel{USE_RELEV}_Sim{USE_SIM}_{NORM_FN}/"
+res_path = f"{res_dir}/{datasetname}_Rel{USE_RELEV}_Sim{USE_SIM}_{NORM_FN}_Beta{BETA}/"
 os.makedirs(res_path, exist_ok=True)
+
+run_config = deepcopy(config)
+run_config["cp"]["risk_tolerant"]["beta"] = BETA
+with open(f"{res_path}/config.yaml", "w") as f:
+    yaml.safe_dump(run_config, f, sort_keys=False)
 
 save_plots_flag = config['output']["save_plots"]
 
@@ -88,7 +100,7 @@ if config['experiment_type']=='synthetic':
 
 
 with open(f"{res_path}/metrics.csv","w") as ff:
-    ff.write("score,epsilon,avgErr,stdErr,avgSingleton,stdSingleton,avgDouble,stdDouble,avgEmpty,stdEmpty,avgSize,stdSize,errSingleton,stdErrSingleton\n")
+    ff.write("score,epsilon,avgErr,stdErr,avgErr0,stdErr0,avgErr1,stdErr1,avgSingleton,stdSingleton,avgDouble,stdDouble,avgEmpty,stdEmpty,avgSize,stdSize,errSingleton,stdErrSingleton,errSingleton0,stdSingleton0,errSingleton1,stdSingleton1\n")
 
 ## MAIN ###
 
@@ -166,7 +178,7 @@ parsedruleset.Feature = parsedruleset.Feature.astype("category")
 parsedruleset.Feature = parsedruleset.Feature.cat.set_categories(featurelabels)
 parsedruleset = parsedruleset.sort_values(["Rule ID", "Feature"])
 rulesim = GeneralizedIoU(parsedruleset, rulesetfile=f"{res_path}/{rulesetfile}", SAVE_RS_VALUES=True, save_path=res_path+rulesim_path) 
-
+'''
 ###### RT-CONFIDERAI #########
 
 print("RT-CONFIDERAI")
@@ -182,7 +194,7 @@ if n_features == 2:
     plot_score(Xts, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "RT-CONFIDERAI", res_path = res_path)
 
 
-avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "RT-CONFIDERAI")
+avgErr, varErr, avgErr0, varErr0, avgErr1, varErr1, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "RT-CONFIDERAI", Xts=Xts, y_pred_ts=y_pred_ts, featurelabels=featurelabels, cls0label=cls0label, cls1label=cls1label)
 
 
 plot_metrics(epsilonrange, avgErr, avgSize, "RT-CONFIDERAI", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
@@ -204,7 +216,7 @@ if n_features == 2:
     plot_score(Xts, tau0ts, tau1ts, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "RA-CONFIDERAI", res_path = res_path)
 
 
-avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "RA-CONFIDERAI")
+avgErr, varErr, avgErr0, varErr0, avgErr1, varErr1, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal(Ycal, tau0cal, tau1cal, n_c, epsilonrange, Yts, tau0ts, tau1ts, res_path, "RA-CONFIDERAI", Xts=Xts, y_pred_ts=y_pred_ts, featurelabels=featurelabels, cls0label=cls0label, cls1label=cls1label)
 
 
 plot_metrics(epsilonrange, avgErr, avgSize, "RA-CONFIDERAI", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
@@ -227,7 +239,7 @@ selectedscores_cal = np.where(Ycal == cls0label, scores0_margin, scores1_margin)
 if n_features == 2:
     plot_score(Xts, scores0ts_margin, scores1ts_margin, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "margin", res_path = res_path)
 
-avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal(Ycal, scores0_margin, scores1_margin, n_c, epsilonrange, Yts, scores0ts_margin, scores1ts_margin, res_path, "margin")
+avgErr, varErr, avgErr0, varErr0, avgErr1, varErr1, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal(Ycal, scores0_margin, scores1_margin, n_c, epsilonrange, Yts, scores0ts_margin, scores1ts_margin, res_path, "margin", Xts=Xts, y_pred_ts=y_pred_ts, featurelabels=featurelabels, cls0label=cls0label, cls1label=cls1label)
     
 
 
@@ -248,7 +260,7 @@ selectedscores_cal = np.where(Ycal == cls0label, scores0_lac, scores1_lac)
 if n_features == 2:
     plot_score(Xts, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "LAC", res_path = res_path)
 
-avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal(Ycal, scores0_lac, scores1_lac, n_c, epsilonrange, Yts, scores0ts_lac, scores1ts_lac, res_path, "LAC")
+avgErr, varErr, avgErr0, varErr0, avgErr1, varErr1, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal(Ycal, scores0_lac, scores1_lac, n_c, epsilonrange, Yts, scores0ts_lac, scores1ts_lac, res_path, "LAC", Xts=Xts, y_pred_ts=y_pred_ts, featurelabels=featurelabels, cls0label=cls0label, cls1label=cls1label)
     
 
 plot_metrics(epsilonrange, avgErr, avgSize, "LAC", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
@@ -256,30 +268,47 @@ plot_metrics(epsilonrange, avgErr, avgSize, "LAC", save_plots_flag = save_plots_
 plot_calibration_scores_distribution(selectedscores_cal, "LAC", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 if (config['experiment_type']=='synthetic') and (n_features == 2):
     plot_prediction_regions(Xts, Ycal, scores0_lac, scores1_lac, scores0ts_lac, scores1ts_lac, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "LAC", selected_eps = selected_epsilon, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+'''
 
 ######### KNN ###########
 
 print("KNN")
 # output rule partitions and scores 
-Xcal_rules, Ycal_rules, scores0_cal_knn, scores1_cal_knn = KNN_Score(Xcal, Ycal, f"{res_path}/{rulesetfile}", featurelabels, outputlabel, cls0label, cls1label, K=int(config["cp"]["knn"]["K"]),min_samples_rule=int(config["cp"]["knn"]["min_samples"]))
-Xts_rules, Yts_rules, scores0_test_knn, scores1_test_knn = KNN_Score(Xts, Yts, f"{res_path}/{rulesetfile}", featurelabels, outputlabel, cls0label, cls1label, K=int(config["cp"]["knn"]["K"]),min_samples_rule=int(config["cp"]["knn"]["min_samples"]))
+Xcal_rules, Ycal_rules, scores0_cal_knn, scores1_cal_knn,_ = KNN_Score(Xcal, Ycal, f"{res_path}/{rulesetfile}", featurelabels, outputlabel, cls0label, cls1label, K=int(config["cp"]["knn"]["K"]),min_samples_rule=int(config["cp"]["knn"]["min_samples"]))
+Xts_rules, Yts_rules, scores0_test_knn, scores1_test_knn, test_rule_indices = KNN_Score(Xts, Yts, f"{res_path}/{rulesetfile}", featurelabels, outputlabel, cls0label, cls1label, K=int(config["cp"]["knn"]["K"]),min_samples_rule=int(config["cp"]["knn"]["min_samples"]))
 
 #selected_cal_rulewise = []
 #for r in range(len(Xcal_rules)):
 #    selectedscores_cal = np.where(Ycal_rules[r] == cls0label, scores0_cal_knn[r], scores1_cal_knn[r])
 #    selected_cal_rulewise.append(selectedscores_cal)
+selected_cal_knn_rulewise = []
+
+for r in range(len(Ycal_rules)):
+    if len(Ycal_rules[r]) == 0:
+        continue
+
+    # For each calibration point, retain the KNN score for its true class.
+    true_label_scores_r = np.where(Ycal_rules[r] == cls0label, scores0_cal_knn[r], scores1_cal_knn[r])
+
+    # Rules below min_samples_rule can produce NaN scores: exclude them.
+    true_label_scores_r = true_label_scores_r[np.isfinite(true_label_scores_r)]
+
+    if len(true_label_scores_r) > 0:
+        selected_cal_knn_rulewise.append(true_label_scores_r)
+
+selectedscores_cal_knn = np.concatenate(selected_cal_knn_rulewise) if selected_cal_knn_rulewise  else np.array([])
 
 if n_features == 2:
     plot_score_rulewise(Xts_rules, scores0_test_knn, scores1_test_knn, rule_limits, changeclsidx, wrong_1_ts, wrong_0_ts, save_plots_flag = save_plots_flag, score_fn = "knn", res_path = res_path)
 
 
-avgErr, varErr, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal_knn(Ycal_rules, scores0_cal_knn, scores1_cal_knn, epsilonrange, Yts_rules, scores0_test_knn, scores1_test_knn, res_path, "knn")
+avgErr, varErr, avgErr0, varErr0, avgErr1, varErr1, avgErr_singleton, varErr_singleton, empty, var_empty, singleton, var_singleton, double, var_double, avgSize, varSize = evaluate_conformal_knn(Ycal_rules, scores0_cal_knn, scores1_cal_knn, epsilonrange, Yts_rules, scores0_test_knn, scores1_test_knn, res_path, "knn", Xts=Xts, y_pred_ts=y_pred_ts, featurelabels=featurelabels, cls0label=cls0label, cls1label=cls1label, test_rule_indices=test_rule_indices)
 
 
 
 plot_metrics(epsilonrange, avgErr, avgSize, "knn", save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 
-plot_calibration_scores_distribution(selectedscores_cal, "knn", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
+plot_calibration_scores_distribution(selectedscores_cal_knn, "knn", epsilon_vals = [0.01, 0.05, 0.1, 0.2], save_plots_flag = save_plots_flag, res_path = res_path, show = False)
 if (config['experiment_type']=='synthetic') and (n_features == 2):
     C_all, _, _, C_size = get_prediction_regions_kNN(Ycal_rules, scores0_cal_knn, scores1_cal_knn, scores0_test_knn, scores1_test_knn, selected_epsilon)
     plot_prediction_regions_knn(Xts_rules, C_all, rule_limits, changeclsidx, wrong_0_ts, wrong_1_ts, "knn", selected_eps = selected_epsilon, save_plots_flag = save_plots_flag, res_path = res_path, show = False)
